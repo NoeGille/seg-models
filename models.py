@@ -7,7 +7,7 @@ class UNet(nn.Module):
 
     NB_OF_FILTERS = 16
 
-    def __init__(self, input_size, num_classes:int=10, depth:int=2):
+    def __init__(self, input_size, num_classes:int=10, depth:int=2, dilation:bool=1):
         '''### Initialize a UNet model
         input_size : dimension of input
         num_classes : specify the number of classes in ouput
@@ -24,7 +24,7 @@ class UNet(nn.Module):
 
         for i in range(1,depth):
             # The number of channels double each time the depth increases
-            self.dblocks.append(DownSampleBlock(in_channels=channels[i], out_channels=channels[i + 1]))
+            self.dblocks.append(DownSampleBlock(in_channels=channels[i], out_channels=channels[i + 1], dilation=dilation))
             self.res_connect.append(ResidualConnection(in_channels=channels[i + 1], out_channels=channels[i]))
             self.ublocks.append(UpSampleBlock(in_channels=channels[i + 1]))
         self.ublocks = self.ublocks[::-1]
@@ -44,10 +44,9 @@ class UNet(nn.Module):
         x = self.bottleneck.forward(x)
         xs_down = xs_down[::-1]
         # Decoder
-        for i, up_block in enumerate(self.ublocks):
+        for i, (up_block, r_conn) in enumerate(zip(self.ublocks, self.res_connect)):
             x_up = up_block.forward(x)
-            x = self.res_connect[i](x_up, xs_down[i])
-        
+            x = r_conn(x_up, xs_down[i])
         x = self.output(x)
         
         return x

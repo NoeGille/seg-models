@@ -30,7 +30,12 @@ train_dataloader_easy = DataLoader(train_data_easy, batch_size = BATCH_SIZE, shu
 
 # CREATING MODEL
 
-model = UNet(INPUT_SIZE, NUM_CLASSES, depth=3).to(DEVICE)
+# Use **kwargs to pass arguments to the model for saving
+kwargs = {'depth':3, 'dilation':2}
+model = UNet(INPUT_SIZE, NUM_CLASSES, **kwargs).to(DEVICE)
+
+print("Number of parameters: ", sum(p.numel() for p in model.parameters() if p.requires_grad))
+
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr = LEARNING_RATE)
 
@@ -54,6 +59,19 @@ for epoch in range(EPOCHS):
         # gradient descent or adam step
         optimizer.step()
 
-# SAVING MODEL
-
-torch.save(model.state_dict(), MODEL_PATH + MODEL_NAME + '.pt')
+# SAVING MODEL 
+# <!> Every arguments of the model initialization must be saved in kwargs dictionary<!>
+# https://pytorch.org/tutorials/beginner/saving_loading_models.html
+torch.save(
+    {
+    'input_size':INPUT_SIZE,
+    'epochs':EPOCHS,
+    'learning_rate':LEARNING_RATE,
+    'batch_size':BATCH_SIZE,
+    'num_classes':NUM_CLASSES,
+    'model_state_dict':model.state_dict(),
+    'optimizer_state_dict':optimizer.state_dict(),
+    'loss':loss,
+    'kwargs':kwargs
+    }, MODEL_PATH + MODEL_NAME + '.pt'
+)

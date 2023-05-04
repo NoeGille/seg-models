@@ -108,10 +108,10 @@ class Block(nn.Module):
 
 class DownSampleBlock(nn.Module):
     '''Reduce the dimension of the image in input by 2'''
-    def __init__(self, in_channels, out_channels):
+    def __init__(self, in_channels, out_channels, dilation=1):
         super(DownSampleBlock, self).__init__()
         # We keep the same dimension in input and ouput
-        self.conv = DoubleConvolution(in_channels, out_channels)
+        self.conv = DoubleConvolution(in_channels, out_channels, dilation=dilation)
         self.pool = nn.MaxPool2d(kernel_size=(2, 2), stride=(2,2))
 
     def forward(self, x):
@@ -119,15 +119,15 @@ class DownSampleBlock(nn.Module):
         return self.pool(x), x
 
 class DoubleConvolution(nn.Module):
-    def __init__(self, in_channels, out_channels):
+    def __init__(self, in_channels, out_channels, dilation=1):
         super(DoubleConvolution, self).__init__()
         # We keep the same dimension in input and ouput
         self.conv1 = nn.Conv2d(in_channels=in_channels, out_channels=out_channels,
-                               kernel_size=(3, 3), stride=(1, 1), padding=(1,1))
+                               kernel_size=(3, 3), stride=(1, 1), padding=dilation, dilation=dilation)
         self.norm1 = nn.BatchNorm2d(out_channels)
         self.relu = nn.ReLU()
         self.conv2 = nn.Conv2d(in_channels=out_channels, out_channels=out_channels,
-                               kernel_size=(3, 3), stride=(1, 1), padding=(1,1))
+                               kernel_size=(3, 3), stride=(1, 1), padding=dilation, dilation=dilation)
         self.norm2 = nn.BatchNorm2d(out_channels)
 
     def forward(self, x):
