@@ -7,11 +7,12 @@ class UNet(nn.Module):
 
     NB_OF_FILTERS = 16
 
-    def __init__(self, input_size, num_classes:int=10, depth:int=2, dilation:bool=1):
+    def __init__(self, input_size, num_classes:int=10, depth:int=2, dilation:int=1):
         '''### Initialize a UNet model
         input_size : dimension of input
         num_classes : specify the number of classes in ouput
-        depth : the number of blocks (depth of the model)'''
+        depth : the number of blocks (depth of the model)
+        dilation : dilation rate of the convolutional layers (1 means basic convolution))'''
         super(UNet, self).__init__()
         channels = [input_size[-1]] + [self.NB_OF_FILTERS * (i + 1) for i in range(depth)]
         # first downsampling block
@@ -166,15 +167,13 @@ class UNETR(nn.Module):
         # Replicates the class token over the sample dimension
         x = x + self.pos_embed # (n_samples, n_patches, embed_dim)
         x = self.pos_drop(x)
-
         # Keep in memory the output of each block
-        encoder_output = torch.zeros((self.depth, n_samples, self.patch_embed.n_patches, self.embed_dim))
+        encoder_output = torch.zeros((self.depth, n_samples, self.patch_embed.n_patches, self.embed_dim)).to(x.device)
         for i, block in enumerate(self.blocks):
             x = block(x)
             encoder_output[i] = x
-        print(encoder_output.shape)
-        encoder_output = x.reshape(self.depth, n_samples, int(self.patch_embed.n_patches ** 0.5), int(self.patch_embed.n_patches **0.5), -1).permute(0, 1, 4, 2, 3) # (n_samples, embed_dim, W/16, H/16)
-        print(encoder_output.shape)
+        encoder_output = encoder_output.reshape(self.depth, n_samples, int(self.patch_embed.n_patches ** 0.5), int(self.patch_embed.n_patches **0.5), -1).permute(0, 1, 4, 2, 3) # (n_samples, embed_dim, W/16, H/16)
+        #encoder_output = x.reshape(self.depth,n_samples,self.embed_dim, self.patch_embed.n_patches)
         # Decoder
         x = self.up1(encoder_output[11])
         y = encoder_output[8]

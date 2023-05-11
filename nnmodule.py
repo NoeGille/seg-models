@@ -135,12 +135,16 @@ class DoubleConvolution(nn.Module):
       return x
 
 class UpSampleBlock(nn.Module):
-    '''Increase the dimension of the input and reduce its number of channels by 2'''
-    def __init__(self, in_channels):
+    '''Increase the dimension of the input and reduce its number of channels
+    out_channels reduces the number of channels of the input by 2 by default
+    It can be set to a different value'''
+    def __init__(self, in_channels, out_channels=None):
         super(UpSampleBlock, self).__init__()
-        self.up1 = nn.ConvTranspose2d(in_channels, in_channels, 2, 2)
-        self.conv1 = nn.Conv2d(in_channels=in_channels,
-                                     out_channels=in_channels, kernel_size=(3, 3),
+        if out_channels is None:
+            out_channels = in_channels
+        self.up1 = nn.ConvTranspose2d(in_channels, out_channels, 2, 2)
+        self.conv1 = nn.Conv2d(in_channels=out_channels,
+                                     out_channels=out_channels, kernel_size=(3, 3),
                                      stride=(1, 1), padding=(1,1))
         
     def forward(self, x):
