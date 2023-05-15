@@ -20,21 +20,18 @@ INPUT_SIZE = (224, 224, 1)
 
 # LOADING DATASETS
 
-train_data_easy = torch.load('datasets/train_data_easy1.pt')
-train_data_easy2 = torch.load('datasets/train_data_easy2.pt')
 
-# SPLITTING DATASETS FOR CROSS VALIDATION
-loader = DataLoader(train_data_easy, batch_size = BATCH_SIZE, shuffle = False)
-subset1 = Subset(train_data_easy, range(0, 2000))
-subset2 = Subset(train_data_easy, range(0, 2000))
-subset1 = DataLoader(train_data_easy, batch_size = BATCH_SIZE, shuffle = False)
-subset2 = DataLoader(train_data_easy2, batch_size = BATCH_SIZE, shuffle = False)
-print((subset1.dataset[0][0] == subset2.dataset[0][0]).sum().item())
-fig = plt.figure()
-fig.add_subplot(1,2,1)
-plt.imshow(train_data_easy2[0][0].squeeze())
-fig.add_subplot(1,2,2)
-plt.imshow(train_data_easy[0][0].squeeze())
-plt.show()
-print(len(loader.dataset[0][0].flatten()))
-dataloader1 = DataLoader(subset, batch_size = BATCH_SIZE, shuffle = False)
+def UNet_freeze(model, layers:list, freeze_bottleneck:bool = False):
+    '''Freeze all specified layers of the UNet model
+    (Here layers are the depth of the model)'''
+    for name, module in model.named_modules():
+        splits = name.split('.')
+        if (len(splits) > 2 and int(splits[1]) in layers) or (splits[0] == 'bottleneck' and freeze_bottleneck):
+            for param in module.parameters():
+                param.requires_grad = False
+
+
+model = UNet(input_size=INPUT_SIZE, num_classes=NUM_CLASSES, depth=4)
+UNet_freeze(model, [1, 2, 3])
+print("Number of parameters: ", sum(p.numel() for p in model.parameters() if p.requires_grad))
+print("Number of parameters: ", sum(p.numel() for p in model.parameters()))

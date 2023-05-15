@@ -95,9 +95,9 @@ if __name__ == "__main__":
     # CONSTANTS
 
     DATASET_PATH = 'datasets/'
-    DATASET_NAME = 'data_hard_len100'
+    DATASET_NAME = 'data_hard_b_len1000'
 
-    length = 100
+    length = 1000
     num_background = 5
     labels = [0, 1, 2]
     not_labels = [0, 1, 2]
@@ -124,7 +124,7 @@ if __name__ == "__main__":
 
     # GENERATING DATASETS
 
-    data = FashionMNISTDataset(dataset = train_dataset, transform = valid_transform, length = length, labels = labels, not_labels = not_labels, background_obj = num_background, include_label=True, triangle_mode=True)
+    data = FashionMNISTDataset(dataset = train_dataset, transform = valid_transform, length = length, labels = labels, not_labels = not_labels, background_obj = num_background, include_label=False, triangle_mode=True)
 
     train_data, valid_data = random_split(data, [0.7, 0.3])
 
