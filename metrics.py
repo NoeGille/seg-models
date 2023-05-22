@@ -14,7 +14,7 @@ class MetricsManager():
         self.fn = 0
         self.tn = 0
         self.num_classes = num_classes
-        self.device = device
+        self.device = 'cpu'
 
     # REQUESTS
 

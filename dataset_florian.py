@@ -15,7 +15,7 @@ class FashionMNISTDataset(Dataset):
                  shape = 224, labels = [1, 2, 3], 
                  not_labels = [5, 6, 7], background_obj = 3, 
                  include_label = True, length = 10000,
-                 triangle_mode = False, seed = -1):
+                 triangle_mode = False, seed = -1, noise = False):
         self.dataset = dataset
         self.transform = transform
         self.shape = shape
@@ -27,6 +27,7 @@ class FashionMNISTDataset(Dataset):
         self.triangle_mode = triangle_mode
         # Use to generate random dataset object
         self.random_key = random.random() if seed < 0 else seed
+        self.noise = noise
     
     def random_fashion_mnist(self, i = 0):
         idx = random.randint(0, len(self.dataset) - 1)
@@ -45,6 +46,11 @@ class FashionMNISTDataset(Dataset):
         random.seed(i + self.random_key)
         
         image = torch.zeros((1, self.shape, self.shape))#, dtype=torch.uint8)
+        
+        # Add noise to the image
+        image = torch.zeros((1, 224, 224))
+        
+
         mask = torch.zeros((self.shape, self.shape))#, dtype=torch.uint8)
 
         x = random.randint(14, self.shape - 114)
@@ -87,6 +93,13 @@ class FashionMNISTDataset(Dataset):
             mask = transformed["mask"]
             image = transforms.ToTensor()(image).to(torch.float)
             mask = torch.from_numpy(mask).long()
+        
+        # Adding noise to the background
+        '''if self.noise:
+            std = torch.ones((1, 224, 224)) * 0.05
+            mean = torch.zeros((1, 224, 224))
+            noise = torch.normal(mean, std)
+            image = torch.where(image == 0, torch.abs(noise), image)'''
         return image, mask
 
 
@@ -95,9 +108,9 @@ if __name__ == "__main__":
     # CONSTANTS
 
     DATASET_PATH = 'datasets/'
-    DATASET_NAME = 'data_hard_b_len1000'
+    DATASET_NAME = 'data_hard_b_len10000'
 
-    length = 1000
+    length = 10000
     num_background = 5
     labels = [0, 1, 2]
     not_labels = [0, 1, 2]
@@ -132,3 +145,16 @@ if __name__ == "__main__":
     
     torch.save(train_data, DATASET_PATH + "train_" + DATASET_NAME + ".pt")
     torch.save(valid_data, DATASET_PATH + "valid_" + DATASET_NAME + ".pt")
+    
+    # PLOTTING SAMPLES
+    print()
+    import matplotlib.pyplot as plt
+    fig = plt.figure(figsize=(10, 10))
+    for i in range(1, 10):
+        
+        image, mask = data[i]
+        print(image[0, :, :])
+        fig.add_subplot(3, 3, i)
+        plt.imshow(image[0, :, :], cmap = 'gray')
+        plt.axis('off')
+    plt.show()

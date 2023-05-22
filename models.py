@@ -29,8 +29,6 @@ class UNet(nn.Module):
             self.dblocks.append(DownSampleBlock(in_channels=channels[i], out_channels=channels[i + 1], dilation=dilation))
             self.res_connect.append(ResidualConnection(in_channels=channels[i + 1], out_channels=channels[i]))
             self.ublocks.append(UpSampleBlock(in_channels=channels[i + 1]))
-        self.ublocks = self.ublocks[::-1]
-        self.res_connect = self.res_connect[::-1]
         self.output = nn.Conv2d(in_channels=num_classes, out_channels=num_classes,
                                kernel_size=(3, 3), stride=(1, 1), padding=(1,1))
         # Used by PytorchReceptiveField
@@ -48,7 +46,7 @@ class UNet(nn.Module):
         x = self.bottleneck.forward(x)
         xs_down = xs_down[::-1]
         # Decoder
-        for i, (up_block, r_conn) in enumerate(zip(self.ublocks, self.res_connect)):
+        for i, (up_block, r_conn) in enumerate(zip(reversed(self.ublocks), reversed(self.res_connect))):
             x_up = up_block.forward(x)
             x = r_conn(x_up, xs_down[i])
         self.feature_maps.append(x)
@@ -207,7 +205,11 @@ class UNETR(nn.Module):
                 y = deconv(y)
             x = self.residuals[i](y, x)
             x = self.up_samples[i + 1](x)
-
+        for i in range(len(self.skip_connections), 3):
+            x = self.up_samples[i + 1](x)
+        
+        x = self.residual4(self.double_conv1(inputs), x)
+        
         '''y = encoder_output[self.skip_connections[1]]
         for deconv in self.z9:
             y = deconv(y)

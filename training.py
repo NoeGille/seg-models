@@ -7,6 +7,9 @@ import torch.nn as nn
 from PIL import Image
 import numpy as np
 import torch
+import wandb
+
+
 
 
 # CONSTANTS
@@ -29,7 +32,8 @@ def continue_training(model_name, epochs, learning_rate, dataset_name, freezing_
     # LOADING MODEL
     checkpoint = torch.load(MODEL_PATH + model_name + '.pt')
     kwargs = checkpoint['kwargs']
-    model = checkpoint['model_class'](**kwargs)
+    model_class = checkpoint['model_class']
+    model = model_class(**kwargs)
     model.load_state_dict(checkpoint['model_state_dict'])
     model.to(device=DEVICE)
 
@@ -81,7 +85,7 @@ def continue_training(model_name, epochs, learning_rate, dataset_name, freezing_
         'datasets': dataset_name,
         'model_class': model_class,
         'kwargs':kwargs
-        }, MODEL_PATH + model_name + '.pt'
+        }, MODEL_PATH + new_model_name + '.pt'
     )
 
 
@@ -162,28 +166,29 @@ def UNet_freeze(model, layers:list, freeze_bottleneck:bool = False):
 '''list of every model, model parameters and training parameters to train
 This allows us to train multiple models in the same script
 training_params = [[model class, kwargs, learning rate, epochs, model name, dataset name], [...], [...'''
-'''[UNet, {'depth':1, 'input_size':INPUT_SIZE}, 0.001, 50, 'unet_rf1', 'data_hard_b_len1000'],
-    [UNet, {'depth':2, 'input_size':INPUT_SIZE}, 0.001, 50, 'unet_rf2', 'data_hard_b_len1000'],
-    [UNet, {'depth':3, 'input_size':INPUT_SIZE}, 0.001, 50, 'unet_rf3', 'data_hard_b_len1000'],
-    [UNet, {'depth':4, 'input_size':INPUT_SIZE}, 0.001, 50, 'unet_rf4', 'data_hard_b_len1000'],
-    [UNet, {'depth':5, 'input_size':INPUT_SIZE}, 0.001, 50, 'unet_rf5', 'data_hard_b_len1000'],
-    [UNet, {'depth':1, 'input_size':INPUT_SIZE, 'dilation':2}, 0.001, 50, 'unet_rfd1', 'data_hard_b_len1000'],
-    [UNet, {'depth':2, 'input_size':INPUT_SIZE, 'dilation':2}, 0.001, 50, 'unet_rfd2', 'data_hard_b_len1000'],
-    [UNet, {'depth':3, 'input_size':INPUT_SIZE, 'dilation':2}, 0.001, 50, 'unet_rfd3', 'data_hard_b_len1000'],
-    [UNet, {'depth':4, 'input_size':INPUT_SIZE, 'dilation':2}, 0.001, 50, 'unet_rfd4', 'data_hard_b_len1000'],
-    [UNet, {'depth':5, 'input_size':INPUT_SIZE, 'dilation':2}, 0.001, 50, 'unet_rfd5', 'data_hard_b_len1000'],'''
+
 
 # <!> Look at pretrained model for UNETR to save some time <!>
 training_params = [
-    [UNet, {'depth':4, 'input_size':INPUT_SIZE}, 0.001, 50, 'unet_pre', 'data_hard_b_len1000']
+    [UNETR, {'depth':1, 'skip_connections':[]}, 0.001, 100, 'unetr_d1_10k', 'data_hard_b_len10000'],
+    [UNETR, {'depth':2, 'skip_connections':[]}, 0.001, 100, 'unetr_d2_10k', 'data_hard_b_len10000'],
+    [UNETR, {'depth':3, 'skip_connections':[]}, 0.001, 100, 'unetr_d3_10k', 'data_hard_b_len10000'],
+    [UNETR, {'depth':4, 'skip_connections':[]}, 0.001, 100, 'unetr_d4_10k', 'data_hard_b_len10000'],
 ]
+
 
 # For pre-trained models
 continue_training_params = [
-    ['unet_pre', 50, 0.001, 'data_hard_b_len1000', lambda model: UNet_freeze(model, [1, 2, 3]), 'unet_frozen_4'],
-    ['unet_pre', 50, 0.001, 'data_hard_b_len1000', lambda model: UNet_freeze(model, [1, 2, 4]), 'unet_frozen_3'],
-    ['unet_pre', 50, 0.001, 'data_hard_b_len1000', lambda model: UNet_freeze(model, [1, 3, 4]), 'unet_frozen_2'],
-    ['unet_pre', 50, 0.001, 'data_hard_b_len1000', lambda model: UNet_freeze(model, [2, 3, 4]), 'unet_frozen_1'],
+    # ['unet_pre3', 25, 0.001, 'data_hard_b_len1000', lambda model: UNet_freeze(model, [2,3,4], freeze_bottleneck=True), 'unet_frozen_nobottle_1'],
+    # ['unet_pre3', 25, 0.001, 'data_hard_b_len1000', lambda model: UNet_freeze(model, [1,3,4], freeze_bottleneck=True), 'unet_frozen_nobottle_2'],
+    # ['unet_pre3', 25, 0.001, 'data_hard_b_len1000', lambda model: UNet_freeze(model, [1,2,4], freeze_bottleneck=True), 'unet_frozen_nobottle_3'],
+    # ['unet_pre3', 25, 0.001, 'data_hard_b_len1000', lambda model: UNet_freeze(model, [1,2,3], freeze_bottleneck=True), 'unet_frozen_nobottle_4'],
+    # ['unet_pre3', 25, 0.001, 'data_hard_b_len1000', lambda model: UNet_freeze(model, [2,3,4], freeze_bottleneck=False), 'unet_frozen_1'],
+    # ['unet_pre3', 25, 0.001, 'data_hard_b_len1000', lambda model: UNet_freeze(model, [1,3,4], freeze_bottleneck=False), 'unet_frozen_2'],
+    # ['unet_pre3', 25, 0.001, 'data_hard_b_len1000', lambda model: UNet_freeze(model, [1,2,4], freeze_bottleneck=False), 'unet_frozen_3'],
+    # ['unet_pre3', 25, 0.001, 'data_hard_b_len1000', lambda model: UNet_freeze(model, [1,2,3], freeze_bottleneck=False), 'unet_frozen_4'],
+    # ['unet_pre3', 25, 0.001, 'data_hard_b_len1000', lambda model: UNet_freeze(model, [], freeze_bottleneck=False), 'unet_frozen_all'],
+    # ['unet_pre3', 25, 0.001, 'data_hard_b_len1000', lambda model: UNet_freeze(model, [1,2,3,4], freeze_bottleneck=False), 'unet_frozen_bottle'],
 ]
 
 for i, params in enumerate(training_params):

@@ -24,14 +24,17 @@ INPUT_SIZE = (224, 224, 1)
 def UNet_freeze(model, layers:list, freeze_bottleneck:bool = False):
     '''Freeze all specified layers of the UNet model
     (Here layers are the depth of the model)'''
+    layers = [layer - 1 for layer in layers]
     for name, module in model.named_modules():
         splits = name.split('.')
+        print(name, end=' ')
         if (len(splits) > 2 and int(splits[1]) in layers) or (splits[0] == 'bottleneck' and freeze_bottleneck):
             for param in module.parameters():
                 param.requires_grad = False
+                print('FROZEN', end=' ')
+        print()
 
 
-model = UNet(input_size=INPUT_SIZE, num_classes=NUM_CLASSES, depth=4)
-UNet_freeze(model, [1, 2, 3])
-print("Number of parameters: ", sum(p.numel() for p in model.parameters() if p.requires_grad))
-print("Number of parameters: ", sum(p.numel() for p in model.parameters()))
+# GENERATE DATASETS
+
+
