@@ -1,0 +1,12 @@
+Number of parameters : 83139850
+Kwargs : {'depth': 8, 'skip_connections': [6, 4, 2]}
+Dataset : data_hard_len1000
+Number of epochs : 50
+Accuracy : 0.99834925
+Precision : 0.73640037
+Recall : 0.62573868
+Dice score : 0.67657435
+Accuracy variance : 0.00000006
+Precision variance : 0.00307613
+Recall variance : 0.00254167
+Dice score variance : 0.00229679

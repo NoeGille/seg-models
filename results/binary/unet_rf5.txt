@@ -1,0 +1,9 @@
+Accuracy : 0.99989003
+Precision : 0.97836924
+Recall : 0.98160440
+Dice score : 0.97998422
+Accuracy variance : 0.00000001
+Precision variance : 0.00052664
+Recall variance : 0.00013032
+Dice score variance : 0.00016250
+Receptive field : [FeatureMapDescription(size=Size(w=224, h=224), rf=ReceptiveFieldDescription(offset=(79.0, 79.0), stride=(0.0, 0.0), size=Size(w=224, h=224)))]
