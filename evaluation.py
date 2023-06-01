@@ -13,9 +13,9 @@ from receptivefield.image import get_default_image
 
 # CONSTANTS
 
-MODEL_PATH = 'models/'
+MODEL_PATH = 'models/multiclass/'
 DATASET_PATH = 'datasets/'
-RESULT_PATH = 'results/unetr/'
+RESULT_PATH = 'results/multiclass/'
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 '''If true, save a prediction on a sample image after evaluation'''
@@ -83,15 +83,40 @@ def plot_metrics(model, dataset, metrics):
     plt.text(0, precision * 100, str(round(float(precision * 100), ndigits=2)))
     plt.text(1, recall * 100,str(round(float(recall * 100), ndigits=2)))
     plt.text(2, dice_score * 100, str(round(float(dice_score * 100), ndigits=2)))
+
+def plot_receptive_field(rf_params, dataset):
+    '''rf_params must be computed with the PytorchReceptiveField class
+    using rf.compute method'''
+    sample_image, sample_mask = dataset[0]
+    width = rf_params[0].rf.size.w
+    height = rf_params[0].rf.size.h
+
+    plt.imshow(sample_image.permute(1, 2, 0)[:,:,0], cmap = 'gray')
+    # Select the center of receptive field (center on a foreground object)
+    y_pos, x_pos = torch.argmax(sample_mask) // 224 + 9, torch.argmax(sample_mask) % 224 + 12
+    plt.plot(x_pos, y_pos, 'ro')
+    
+    # Plot a square around the receptive field and color it in red
+    plt.plot([x_pos - width, x_pos + width], [y_pos - height, y_pos - height], 'r')
+    plt.plot([x_pos - width, x_pos + width], [y_pos + height, y_pos + height], 'r')
+    plt.plot([x_pos - width, x_pos - width], [y_pos - height, y_pos + height], 'r')
+    plt.plot([x_pos + width, x_pos + width], [y_pos - height, y_pos + height], 'r')
+    plt.fill([x_pos - width, x_pos + width, x_pos + width, x_pos - width], [y_pos - height, y_pos - height, y_pos + height, y_pos + height], 'r', alpha=0.3)
+    
+    plt.xlim(0, 224)
+    plt.ylim(224, 0)
+    plt.axis('off')
     
 
-def save_metrics(metrics_mean, metrics_var, model_name):
+
+def save_metrics(metrics_mean, metrics_var, model_name, receptive_field=None):
     '''Save metrics and various informations about the model'''
     accuracy, precision, recall, dice_score = metrics_mean
     accuracy_var, precision_var, recall_var, dice_score_var = metrics_var
     checkpoint = torch.load(MODEL_PATH + model_name + '.pt')
     kwargs = checkpoint['kwargs']
     datasets = checkpoint['datasets']
+    
 
     file = open(RESULT_PATH + f'{model_name}.txt', 'w')
     file.write(f'Kwargs : {kwargs}\n')
@@ -103,19 +128,22 @@ def save_metrics(metrics_mean, metrics_var, model_name):
     file.write(f'Precision variance : {precision_var:.8f}\n')
     file.write(f'Recall variance : {recall_var:.8f}\n')
     file.write(f'Dice score variance : {dice_score_var:.8f}\n')
+    if receptive_field is not None:
+        file.write(f'Receptive field : {receptive_field}\n')
     file.close()
+
 
 
 if __name__ == "__main__":
     model_names = [
-        'unetr_d1_10k',
-        'unetr_d2_10k',
-        'unetr_d3_10k',
-        'unetr_d4_10k',
+        'unet_test_d1',
     ]
 
-    # EVALUATION
     
+    
+    
+    # EVALUATION
+    rf_fig = plt.figure(figsize=(25, 20))
     for i, model_name in enumerate(model_names):
         print(f'Evaluating {model_name} ({i+1}/{len(model_names)})')
         
@@ -133,6 +161,24 @@ if __name__ == "__main__":
         
         mean_metrics, var_metrics = evaluate(model=model, dataset=dataset)
         
+        def model_fn() -> nn.Module:
+            model = UNet(**kwargs)
+            model.eval()
+            return model
+        
+        if RECEPTIVE_FIELD:
+            rf = PytorchReceptiveField(model_fn)
+            rf_params = rf.compute(input_shape=(224, 224, 1))
+            rf_fig.add_subplot(4,5,i+1, label=f'{i+1}')
+            plot_receptive_field(rf_params=rf_params, dataset=dataset)
+        
+        
+        if METRICS:
+            if RECEPTIVE_FIELD:
+                save_metrics(mean_metrics, var_metrics, model_name, rf_params)
+            else:
+                save_metrics(mean_metrics, var_metrics, model_name)
+                
         if SAVE_PREDICTION:
             plt.figure()
             plot_prediction2(model=model, dataset=dataset)
@@ -141,10 +187,14 @@ if __name__ == "__main__":
             plot_metrics(model=model, dataset=dataset, metrics=mean_metrics)
             plt.savefig(RESULT_PATH + f'{model_name}_metrics.png', bbox_inches='tight')
             figure = plt.figure(figsize=(10, 5))
+            plot_prediction(model=model, dataset=dataset, fig=figure)
+            plt.savefig(RESULT_PATH + f'{model_name}_pred2.png', bbox_inches='tight')
+            if RECEPTIVE_FIELD:
+                rf_fig.add_subplot(5,4,i+1, label=f'{i+1}')
+                plt.figure(f'{i+1}')
+                plot_receptive_field(rf_params=rf_params, dataset=dataset)
         
-        if METRICS:
-            save_metrics(mean_metrics, var_metrics, model_name)
-        
+    rf_fig.savefig(RESULT_PATH + f'{model_name}_rf.png', bbox_inches='tight')
 
         
     

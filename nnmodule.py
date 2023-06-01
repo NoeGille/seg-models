@@ -122,6 +122,7 @@ class DoubleConvolution(nn.Module):
     def __init__(self, in_channels, out_channels, dilation=1):
         super(DoubleConvolution, self).__init__()
         # We keep the same dimension in input and ouput
+
         self.conv1 = nn.Conv2d(in_channels=in_channels, out_channels=out_channels,
                                kernel_size=(3, 3), stride=(1, 1), padding=dilation, dilation=dilation)
         self.norm1 = nn.BatchNorm2d(out_channels)

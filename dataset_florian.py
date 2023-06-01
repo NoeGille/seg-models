@@ -46,32 +46,18 @@ class FashionMNISTDataset(Dataset):
         random.seed(i + self.random_key)
         
         image = torch.zeros((1, self.shape, self.shape))#, dtype=torch.uint8)
-        
-        # Add noise to the image
-        image = torch.zeros((1, 224, 224))
-        
-
         mask = torch.zeros((self.shape, self.shape))#, dtype=torch.uint8)
 
-        x = random.randint(14, self.shape - 114)
-        y = x
-
-        points = [(x, y), (x + 100, y), (x + 100, y + 100), (x, y + 100)]
-
-        if self.triangle_mode:
-            points = random.sample(points, 3)
+        try:
+            self.noise = self.noise
+        except:
+            self.noise = False
         
-        for i, p in enumerate(points):
-            while True:
-                img, label = self.random_fashion_mnist(i)
-                if label in self.labels:
-                    break
-            
-            x_pos, y_pos = p[0] - 14, p[1] - 14
-            image[:, x_pos:x_pos+28, y_pos:y_pos+28] = img
-            mask[x_pos:x_pos+28, y_pos:y_pos+28] = self.include_label * label + 1
-            mask[x_pos:x_pos + 28, y_pos:y_pos + 28][img[0, :, :] == 0] = 0
+        '''A retirer'''
+        #self.noise = False
+        '''A retirer'''
         
+        # Adding background objects
         for i in range(self.background_obj):
             while True:
                 img, label = self.random_fashion_mnist(i)
@@ -84,6 +70,34 @@ class FashionMNISTDataset(Dataset):
                     break
             image[:, x:x + 28, y:y + 28] = torch.where(image[:, x:x + 28, y:y + 28] > 0, image[:, x:x + 28, y:y + 28], img)
         
+        # Select original position for the Cloud of Strutured Objects
+        x = random.randint(28, self.shape - 128)
+        y = x
+
+        
+        if self.noise:
+            pos_noise = [[random.randint(-10, 10), random.randint(-10, 10), random.randint(-10, 10), random.randint(-10, 10)], 
+                        [random.randint(-10, 10), random.randint(-10, 10), random.randint(-10, 10), random.randint(-10, 10)]]
+        else:
+            pos_noise = [[0, 0, 0, 0], [0, 0, 0, 0]]
+        
+        points = [(x, y), (x + 100, y), (x + 100, y + 100), (x, y + 100)]
+        
+        if self.triangle_mode:
+            points = random.sample(points, 3)
+        
+        # Adding foreground objects
+        for i, p in enumerate(points):
+            while True:
+                img, label = self.random_fashion_mnist(i)
+                if label in self.labels:
+                    break
+            
+            x_pos, y_pos = p[0] - 14 + pos_noise[0][i], p[1] - 14 + pos_noise[1][i]
+            image[:, x_pos:x_pos+28, y_pos:y_pos+28] = img
+            mask[x_pos:x_pos+28, y_pos:y_pos+28] = self.include_label * label + 1
+            mask[x_pos:x_pos + 28, y_pos:y_pos + 28][img[0, :, :] == 0] = 0
+        
         if self.transform is not None:
             image = image.permute(1, 2, 0)
             image = np.array(image)
@@ -95,11 +109,11 @@ class FashionMNISTDataset(Dataset):
             mask = torch.from_numpy(mask).long()
         
         # Adding noise to the background
-        '''if self.noise:
+        if self.noise:
             std = torch.ones((1, 224, 224)) * 0.05
             mean = torch.zeros((1, 224, 224))
             noise = torch.normal(mean, std)
-            image = torch.where(image == 0, torch.abs(noise), image)'''
+            image = torch.where(image == 0, torch.abs(noise), image)
         return image, mask
 
 
@@ -108,9 +122,9 @@ if __name__ == "__main__":
     # CONSTANTS
 
     DATASET_PATH = 'datasets/'
-    DATASET_NAME = 'data_hard_b_len10000'
+    DATASET_NAME = 'data_len_1000'
 
-    length = 10000
+    length = 1000
     num_background = 5
     labels = [0, 1, 2]
     not_labels = [0, 1, 2]
@@ -137,24 +151,27 @@ if __name__ == "__main__":
 
     # GENERATING DATASETS
 
-    data = FashionMNISTDataset(dataset = train_dataset, transform = valid_transform, length = length, labels = labels, not_labels = not_labels, background_obj = num_background, include_label=False, triangle_mode=True)
+    data = FashionMNISTDataset(dataset = train_dataset, transform = valid_transform, length = length, labels = labels, not_labels = not_labels, background_obj = num_background, include_label=True, triangle_mode=True, noise=True)
 
     train_data, valid_data = random_split(data, [0.7, 0.3])
 
     # SAVING DATASETS
+    torch.save(data, DATASET_PATH + DATASET_NAME + ".pt")
     
     torch.save(train_data, DATASET_PATH + "train_" + DATASET_NAME + ".pt")
     torch.save(valid_data, DATASET_PATH + "valid_" + DATASET_NAME + ".pt")
     
     # PLOTTING SAMPLES
-    print()
-    import matplotlib.pyplot as plt
-    fig = plt.figure(figsize=(10, 10))
-    for i in range(1, 10):
-        
-        image, mask = data[i]
-        print(image[0, :, :])
-        fig.add_subplot(3, 3, i)
-        plt.imshow(image[0, :, :], cmap = 'gray')
-        plt.axis('off')
-    plt.show()
+    if True:
+        print()
+        import matplotlib.pyplot as plt
+        fig = plt.figure(figsize=(10, 10))
+        for i in range(1, 10):
+            
+            image, mask = data[i]
+            print(image[0, :, :])
+            fig.add_subplot(3, 3, i)
+            plt.imshow(image[0, :, :], cmap = 'gray')
+            plt.imshow(mask, alpha = 0.5)
+            plt.axis('off')
+        plt.show()
