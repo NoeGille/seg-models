@@ -28,6 +28,7 @@ class FashionMNISTDataset(Dataset):
         # Use to generate random dataset object
         self.random_key = random.random() if seed < 0 else seed
         self.noise = noise
+        
     
     def random_fashion_mnist(self, i = 0):
         idx = random.randint(0, len(self.dataset) - 1)
@@ -114,7 +115,25 @@ class FashionMNISTDataset(Dataset):
             mean = torch.zeros((1, 224, 224))
             noise = torch.normal(mean, std)
             image = torch.where(image == 0, torch.abs(noise), image)
+            
         return image, mask
+    
+class FashionMNISTDatasetRGB(FashionMNISTDataset):
+    '''A version of the FashionMNISTDataset that returns RGB images where each image is repeated 3 times on the channel axis'''
+    def __init__(self, dataset, transform = None, 
+                    shape = 224, labels = [1, 2, 3],
+                    not_labels = [5, 6, 7], background_obj = 3,
+                    include_label = True, length = 10000,
+                    triangle_mode = False, seed = -1, noise = False):
+        super().__init__(dataset, transform, shape, labels, not_labels, background_obj, include_label, length, triangle_mode, seed, noise)
+        
+    def __getitem__(self, i):
+        img, mask = super().__getitem__(i)
+        
+        # Repeat the image 3 times on the channel axis
+        img = img.repeat(3, 1, 1)
+        
+        return img, mask
 
 
 if __name__ == "__main__":
@@ -122,7 +141,7 @@ if __name__ == "__main__":
     # CONSTANTS
 
     DATASET_PATH = 'datasets/'
-    DATASET_NAME = 'data_len_1000'
+    DATASET_NAME = 'data_rgb_b_len_1000'
 
     length = 1000
     num_background = 5
@@ -151,8 +170,9 @@ if __name__ == "__main__":
 
     # GENERATING DATASETS
 
-    data = FashionMNISTDataset(dataset = train_dataset, transform = valid_transform, length = length, labels = labels, not_labels = not_labels, background_obj = num_background, include_label=True, triangle_mode=True, noise=True)
+    data = FashionMNISTDatasetRGB(dataset = train_dataset, transform = valid_transform, length = length, labels = labels, not_labels = not_labels, background_obj = num_background, include_label=True, triangle_mode=True, noise=False)
 
+    print(data[0][0].shape)
     train_data, valid_data = random_split(data, [0.7, 0.3])
 
     # SAVING DATASETS
@@ -175,3 +195,5 @@ if __name__ == "__main__":
             plt.imshow(mask, alpha = 0.5)
             plt.axis('off')
         plt.show()
+
+

@@ -10,7 +10,7 @@ import torch
 
 # CONSTANTS
 
-DATASET_PATH = 'datasets/'
+DATASET_PATH = 'datasets/dilated/'
 MODEL_PATH = 'models/'
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -18,23 +18,39 @@ NUM_CLASSES = 10
 BATCH_SIZE = 16
 INPUT_SIZE = (224, 224, 1)
 
-# LOADING DATASETS
+model = UNETR(img_size = 224, depth=2, skip_connections=[0,1])
 
+# LOAD A UNETR MODEL
+model_names = ['unet_d2_dil1', 'unet_d2_dil2', 'unet_d2_dil3', 'unet_d4_dil1', 'unet_d5_dil1']
 
-def UNet_freeze(model, layers:list, freeze_bottleneck:bool = False):
-    '''Freeze all specified layers of the UNet model
-    (Here layers are the depth of the model)'''
-    layers = [layer - 1 for layer in layers]
-    for name, module in model.named_modules():
-        splits = name.split('.')
-        print(name, end=' ')
-        if (len(splits) > 2 and int(splits[1]) in layers) or (splits[0] == 'bottleneck' and freeze_bottleneck):
-            for param in module.parameters():
-                param.requires_grad = False
-                print('FROZEN', end=' ')
-        print()
+for model_name in model_names:
+    # LOADING MODEL AND DATA FROM FILES
+    checkpoint = torch.load(MODEL_PATH + model_name + '.pt')
+    num_classes = checkpoint['num_classes']
+    kwargs = checkpoint['kwargs']
+    model = checkpoint['model_class'](**kwargs)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    model.to(device=DEVICE)
+    
+    model.eval()
+    try:
+        print(model.get_receptive_field(dilation=kwargs['dilation']))
+    except:
+        print(model.get_receptive_field())
 
+'''# GETTING THE ATTENTION MAPS FROM FIRST BLOCK
+attention_maps = model.get_attention(2, sample_image.unsqueeze(0).to(device=DEVICE)) # dim : (1, 4, 196, 196)
+print(attention_maps.shape)
+print(attention_maps)
 
-# GENERATE DATASETS
-
+# PLOTTING THE FIRST ATTENTION MAP
+fig = plt.figure(figsize=(12.5, 25))
+for i in range(196):
+    fig.add_subplot(14, 14, i+1)
+    plt.imshow(attention_maps[0, 0, :, i].reshape(14, 14).cpu().detach().numpy(), cmap='gray')
+    plt.axis('off')
+plt.figure(figsize=(12.5, 25))
+plt.imshow(sample_image[0, :, :].cpu().detach().numpy(), cmap='gray')
+plt.axis('off')
+plt.show()'''
 

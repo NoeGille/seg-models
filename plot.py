@@ -3,10 +3,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Specify the path to the CSV file
-csv_file = 'output.csv'
+csv_file = 'to_plot.csv'
 
 # Specify the path to the result file
-result_path = 'results/cv/'
+result_path = 'results/dilated/'
 
 # Initialize empty lists to store data
 depths = []
@@ -19,9 +19,9 @@ with open(csv_file, 'r') as csvfile:
     for row in reader:
         depths.append(int(row['Depth']))
         dice_scores.append([float(row['Dilation1']), float(row['Dilation2']), float(row['Dilation3']),
-                            float(row['Dilation4'])])
+                            float(row['Dilation4']), float(row['Dilation8']), float(row['Dilation12'])])
         dice_std.append([float(row['Var dil1']) ** 0.5, float(row['Var dil2']) ** 0.5, float(row['Var dil3']) ** 0.5,
-                         float(row['Var dil4']) ** 0.5])
+                         float(row['Var dil4']) ** 0.5, float(row['Var dil8']) ** 0.5, float(row['Var dil12']) ** 0.5])
 
 # Convert lists to numpy arrays
 depths = np.array(depths)
@@ -40,12 +40,12 @@ for i, dilation in enumerate(dilations):
                      alpha=0.3, color=colors[i])
 
 plt.xlabel('Depth')
-plt.ylabel('Precision')
-plt.title('Evolution of Precisions by Dilation and Depth')
+plt.ylabel('Recall')
+plt.title('Evolution of Recall by Dilation and Depth')
 plt.legend()
 
 # Save the plot as an image file
-plt.savefig(result_path + 'precision_plot.png', dpi=300, bbox_inches='tight')
+plt.savefig(result_path + 'recall_wide.png', dpi=300, bbox_inches='tight')
 
 # Display the plot
 plt.show()

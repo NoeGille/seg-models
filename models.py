@@ -1,7 +1,7 @@
-from nnmodule import PatchEmbed, Block, ResidualConnection, UpSampleBlock, DoubleConvolution, DownSampleBlock
+from nnmodule import PatchEmbed, Block, ResidualConnection, UpSampleBlock, DoubleConvolution, DownSampleBlock, Deconv, DoubleConv, VisionTransformer, load_custom_model
 import torch.nn as nn
 import torch
-
+from rf_function import conv, upsample, downsample
 
 class UNet(nn.Module):
 
@@ -16,12 +16,12 @@ class UNet(nn.Module):
         super(UNet, self).__init__()
         
         channels = [input_size[-1]] + [self.NB_OF_FILTERS * (i + 1) for i in range(depth)]
-        # first downsampling block
-        self.dblocks = nn.ModuleList([DownSampleBlock(in_channels=channels[0], out_channels=channels[1])])
-        self.bottleneck = DoubleConvolution(in_channels=channels[-1], out_channels=channels[-1])
+        # List of downsampling block + first downsampling block
+        self.dblocks = nn.ModuleList([DownSampleBlock(in_channels=channels[0], out_channels=channels[1], dilation=dilation)])
+        self.bottleneck = DoubleConvolution(in_channels=channels[-1], out_channels=channels[-1], dilation=dilation)
         # Concatenate outputs from encoder and decoder to keep tracks of objects positions
         self.res_connect = nn.ModuleList([ResidualConnection(in_channels=channels[1], out_channels=num_classes)])
-        # Last upsampling block
+        # List of Upsampling block + last upsampling block
         self.ublocks = nn.ModuleList([UpSampleBlock(in_channels=channels[1])])
 
         for i in range(1,depth):
@@ -63,171 +63,179 @@ class UNet(nn.Module):
             *self.ublocks,
             self.output
         )
-
-class VisionTransformer(nn.Module):
-    '''Vision transformer'''
-    def __init__(self, img_size=384, patch_size=16, in_chans=3, n_classes=1000, 
-                 embed_dim=768, depth=12, n_heads=4, mlp_ratio=4., qkv_bias=True, p=0., attn_p=0.):
-        super().__init__()
-        self.patch_embed = PatchEmbed(img_size=img_size, patch_size=patch_size, in_channels=in_chans,embed_dim=embed_dim)
-        # Learnable parameter taht will represent the first token in the sequence. It has embed_dim elements.
-        self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
-        self.pos_embed = nn.Parameter(torch.zeros(1, 1 + self.patch_embed.n_patches, embed_dim))
-        self.pos_drop = nn.Dropout(p=p)
-        self.blocks = nn.ModuleList(
-            [
-                Block(
-                    dim=embed_dim,
-                    n_heads=n_heads,
-                    mlp_ratio=mlp_ratio,
-                    qkv_bias=qkv_bias,
-                    p=p,
-                    attn_p=attn_p
-                )
-                for _ in range(depth)
-            ]
-        )
-
-        self.norm = nn.LayerNorm(embed_dim, eps=1e-6)
-        self.head = nn.Linear(embed_dim, n_classes)
-
-    def forward(self, x):
-        # Transform input images into patch embedding
-        n_samples = x.shape[0]
-        x = self.patch_embed(x)
-        # Replicates the class token over the sample dimension
-        cls_token = self.cls_token.expand(n_samples, -1, -1) # (n_samples, 1, embed_dim)
-        x = torch.cat((cls_token, x), dim=1) # (n_samples, 1 + n_patches, embed_dim)
-        x = x + self.pos_embed # (n_samples, 1 + n_patches, embed_dim)
-        x = self.pos_drop(x)
-
-        for block in self.blocks:
-            x = block(x)
-
-        x = self.norm(x)
-        cls_token_final = x[:, 0] # just the cls token
-        x = self.head(cls_token_final)
-        return x
+    
+    def get_receptive_field(self, dilation=1):
+        '''Compute the receptive field of the model. The dilation used when creating the model should be specified'''
+        rf = 1
+        for up_block in self.ublocks:
+            rf = upsample(rf)
+        rf = conv(conv(rf, dilation=dilation), dilation=dilation)
+        for down_block in self.dblocks:
+            rf = downsample(rf, dilation=dilation)
+        return rf
 
 class UNETR(nn.Module):
-    '''UNETR model for 2D images'''
-    def __init__(self, img_size=224, patch_size=16, in_chans=1, num_classes=10, 
-                 embed_dim=768, depth=12, n_heads=4, mlp_ratio=4., qkv_bias=True, p=0., attn_p=0., skip_connections=[9, 6, 3]):
-        '''skip_connections : list of the blocks where skip connections are made 
-        (len(skip_connections) <= 4)) in descending order'''
-        super(UNETR, self).__init__()
-        self.depth = depth
-        self.embed_dim = embed_dim
-        self.skip_connections = torch.LongTensor(skip_connections) - 1
+  def __init__(self, img_size = 224, patch_size = 16, in_chans = 3, embed_dim = 768,
+               depth = 12, n_heads = 12, mlp_ratio = 4, qkv_bias = True, pretrained_name = None,
+               conv_init = True, skip_connections = [0], num_classes = 10):
+    super().__init__()
 
-        # Encoder
-        self.patch_embed = PatchEmbed(img_size=img_size, patch_size=patch_size, in_channels=in_chans,embed_dim=embed_dim)
-        self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
-        self.pos_embed = nn.Parameter(torch.zeros(1, self.patch_embed.n_patches, embed_dim))
-        self.pos_drop = nn.Dropout(p=p)
-        self.blocks = nn.ModuleList(
-            [
-                Block(
-                    dim=embed_dim,
-                    n_heads=n_heads,
-                    mlp_ratio=mlp_ratio,
-                    qkv_bias=qkv_bias,
-                    p=p,
-                    attn_p=attn_p
-                )
-                for _ in range(depth)
-            ]
-        )
-        # TODO : Add residual connection
-        
-        
-        # Decoder (uses deconv layers)
-        # dim : 
-        #   - input (768, W/16, H/16)
-        #   - output (num_classes, W, H)
-        self.up1 = nn.ConvTranspose2d(in_channels=embed_dim, out_channels=512, kernel_size=2, stride=2) # (512, W/8, H/8)
-        self.residual1 = ResidualConnection(in_channels=512, out_channels=512)
-        self.up2 = nn.ConvTranspose2d(in_channels=512, out_channels=256, kernel_size=2, stride=2) # (256, W/4, H/4
-        self.residual2 = ResidualConnection(in_channels=256, out_channels=256)
-        self.up3 = nn.ConvTranspose2d(in_channels=256, out_channels=128, kernel_size=2, stride=2) # (128, W/2, H/2)
-        self.residual3 = ResidualConnection(in_channels=128, out_channels=128)
-        self.up4 = nn.ConvTranspose2d(in_channels=128, out_channels=64, kernel_size=2, stride=2) # (64, W, H)
-        self.residual4 = ResidualConnection(in_channels=64, out_channels=64)
+    self.skip_connections = skip_connections
+    self.patch_dim = img_size // patch_size
+    self.conv_init = conv_init
 
-        self.up_samples = nn.ModuleList([self.up1, self.up2, self.up3, self.up4])
-        self.residuals = nn.ModuleList([self.residual1, self.residual2, self.residual3, self.residual4])
+    # Encoder
 
-        # Note : these values are hardcoded for now and follow the paper of UNETR
+    self.vit = VisionTransformer(img_size = img_size,
+                  patch_size = patch_size,
+                  in_chans = in_chans,
+                  embed_dim = embed_dim,
+                  depth = depth,
+                  n_heads = n_heads,
+                  mlp_ratio = mlp_ratio,
+                  qkv_bias = qkv_bias)
+    if pretrained_name is not None:
+      self.vit = load_custom_model(model_custom = self.vit, timm_name = pretrained_name, depth = depth)
 
-        # Changing encoder output to match decoder input at each step of decoding
-        self.z9 = nn.ModuleList(
-            [UpSampleBlock(in_channels=768, out_channels=512)]
-        )
-        self.z6 = nn.ModuleList(
-            [UpSampleBlock(in_channels=768, out_channels=512),
-             UpSampleBlock(in_channels=512, out_channels=256)]
-        )
-        self.z3 = nn.ModuleList(
-            [UpSampleBlock(in_channels=768, out_channels=512),
-             UpSampleBlock(in_channels=512, out_channels=256),
-             UpSampleBlock(in_channels=256, out_channels=128)]
-        )
-        self.up_connections = nn.ModuleList([self.z9, self.z6, self.z3])
-        self.double_conv1 = DoubleConvolution(in_channels=in_chans, out_channels=64)
-        self.double_conv2 = DoubleConvolution(in_channels=64, out_channels=64)
-        self.conv = nn.Conv2d(in_channels=64, out_channels=num_classes, kernel_size=(1, 1), stride=(1, 1))
-        
+    if conv_init:
+      self.img_conv = DoubleConv(in_chans, 64)
+    
+    self.u11 = Deconv(embed_dim, 512)
+    self.u12 = Deconv(512, 256)
+    self.u13 = Deconv(256, 128)
 
-    def forward(self, x):
+    if len(self.skip_connections) > 1:
+      self.u21 = Deconv(embed_dim, 512)
+      self.u22 = Deconv(512, 256)
 
-        inputs = x
-        # Encoder
+    if len(self.skip_connections) > 2:
+      self.u31 = Deconv(embed_dim, 512)
 
-        # Transform input images into patch embedding
-        n_samples = x.shape[0]
-        x = self.patch_embed(x)
-        # Replicates the class token over the sample dimension
-        x = x + self.pos_embed # (n_samples, n_patches, embed_dim)
-        x = self.pos_drop(x)
-        # Keep in memory the output of each block
-        encoder_output = torch.zeros((self.depth, n_samples, self.patch_embed.n_patches, self.embed_dim)).to(x.device)
-        for i, block in enumerate(self.blocks):
-            x = block(x)
-            encoder_output[i] = x
-        encoder_output = encoder_output.reshape(self.depth, n_samples, int(self.patch_embed.n_patches ** 0.5), int(self.patch_embed.n_patches **0.5), -1).permute(0, 1, 4, 2, 3) # (n_samples, embed_dim, W/16, H/16)
-        
-        # Decoder
-        x = self.up1(encoder_output[self.depth - 1])
-        # Add skip connections
-        for i in range(len(self.skip_connections)):
-            y = encoder_output[self.skip_connections[i]]
-            for deconv in self.up_connections[i]:
-                y = deconv(y)
-            x = self.residuals[i](y, x)
-            x = self.up_samples[i + 1](x)
-        for i in range(len(self.skip_connections), 3):
-            x = self.up_samples[i + 1](x)
-        
-        x = self.residual4(self.double_conv1(inputs), x)
-        
-        '''y = encoder_output[self.skip_connections[1]]
-        for deconv in self.z9:
-            y = deconv(y)
-        x = self.residual1(y, x)
-        x = self.up2(x)
-        y = encoder_output[self.skip_connections[2]]
-        for deconv in self.z6:
-            y = deconv(y)
-        x = self.residual2(y, x)
-        x = self.up3(x)
-        y = encoder_output[self.skip_connections[3]]
-        for deconv in self.z3:
-            y = deconv(y)
-        x = self.residual3(y, x)
-        x = self.up4(x)
-        x = self.residual4(self.double_conv1(inputs), x)'''
+    if len(self.skip_connections) > 3:
+      self.u41 = nn.ConvTranspose2d(768, 512, 2, 2)
 
-        x = self.double_conv2(x)
-        x = self.conv(x)
-        
-        return x
+    # Decoder
+
+    if len(self.skip_connections) == 1:
+      self.dc1 = DoubleConv(128, 128)
+      self.du1 = nn.ConvTranspose2d(128, 64, 2, 2)
+
+    if len(self.skip_connections) == 2:
+      self.dc2 = DoubleConv(256, 256)
+      self.du2 = nn.ConvTranspose2d(256, 128, 2, 2)
+
+      self.dc1 = DoubleConv(256, 128)
+      self.du1 = nn.ConvTranspose2d(128, 64, 2, 2)
+
+    if len(self.skip_connections) == 3:
+      self.dc3 = DoubleConv(512, 512)
+      self.du3 = nn.ConvTranspose2d(512, 256, 2, 2)
+
+      self.dc2 = DoubleConv(512, 256)
+      self.du2 = nn.ConvTranspose2d(256, 128, 2, 2)
+
+      self.dc1 = DoubleConv(256, 128)
+      self.du1 = nn.ConvTranspose2d(128, 64, 2, 2)
+    
+    if len(self.skip_connections) == 4:
+      self.dc3 = DoubleConv(1024, 512)
+      self.du3 = nn.ConvTranspose2d(512, 256, 2, 2)
+
+      self.dc2 = DoubleConv(512, 256)
+      self.du2 = nn.ConvTranspose2d(256, 128, 2, 2)
+
+      self.dc1 = DoubleConv(256, 128)
+      self.du1 = nn.ConvTranspose2d(128, 64, 2, 2)
+
+    if self.conv_init:
+      self.final_conv = DoubleConv(128, 64)
+    else:
+      self.final_conv = DoubleConv(64, 64)
+
+    self.segmentation_head = nn.Conv2d(64, num_classes, 3, 1, 1)
+
+  def forward(self, x):
+
+    # Encoder
+
+    if self.conv_init:
+      conv_features = self.img_conv(x)
+      # print(conv_features.shape)
+
+    features = self.vit(x)
+
+    n, _, c = features[0].shape
+    features = [i[:, 1:, :].permute(0, 2, 1).reshape(n, c, self.patch_dim, self.patch_dim) for i in features]
+
+    feature_0 = features[self.skip_connections[0]]
+    feature_0 = self.u11(feature_0)
+    feature_0 = self.u12(feature_0)
+    feature_0 = self.u13(feature_0)
+
+    # print(feature_0.shape)
+
+    if len(self.skip_connections) > 1:
+      feature_1 = features[self.skip_connections[1]]
+      feature_1 = self.u21(feature_1)
+      feature_1 = self.u22(feature_1)
+      # print(feature_1.shape)
+
+    if len(self.skip_connections) > 2:
+      feature_2 = features[self.skip_connections[2]]
+      feature_2 = self.u31(feature_2)    
+      # print(feature_2.shape)
+
+    if len(self.skip_connections) > 3:
+      feature_3 = features[self.skip_connections[3]]
+      feature_3 = self.u41(feature_3)
+      # print(feature_3.shape)
+
+    # Decoder
+
+    if len(self.skip_connections) == 1:
+      x1 = self.dc1(feature_0)
+      x1 = self.du1(x1)
+
+    if len(self.skip_connections) == 2:
+      x2 = self.dc2(feature_1)
+      x2 = self.du2(x2)
+
+      x1 = torch.cat((feature_0, x2), 1)
+      x1 = self.dc1(x1)
+      x1 = self.du1(x1)
+
+    if len(self.skip_connections) == 3:
+      x3 = self.dc3(feature_2)
+      x3 = self.du3(x3)
+
+      x2 = torch.cat((feature_1, x3), 1)
+      x2 = self.dc2(x2)
+      x2 = self.du2(x2)
+
+      x1 = torch.cat((feature_0, x2), 1)
+      x1 = self.dc1(x1)
+      x1 = self.du1(x1)
+  
+    if len(self.skip_connections) == 4:
+      x3 = torch.cat((feature_2, feature_3), 1)
+      print(x3.shape)
+      x3 = self.dc3(x3)
+      x3 = self.du3(x3)
+
+      x2 = torch.cat((feature_1, x3), 1)
+      x2 = self.dc2(x2)
+      x2 = self.du2(x2)
+
+      x1 = torch.cat((feature_0, x2), 1)
+      x1 = self.dc1(x1)
+      x1 = self.du1(x1)
+    
+    if self.conv_init:
+      x1 = torch.cat((conv_features, x1), 1)
+    x = self.final_conv(x1)
+    out = self.segmentation_head(x)
+
+    return out
+  
+  def attention_map(self, x):
+    return self.vit.attention_map(x)

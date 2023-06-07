@@ -13,19 +13,19 @@ from receptivefield.image import get_default_image
 
 # CONSTANTS
 
-MODEL_PATH = 'models/multiclass/'
-DATASET_PATH = 'datasets/'
-RESULT_PATH = 'results/multiclass/'
+MODEL_PATH = 'models/test/'
+DATASET_PATH = 'datasets/test/'
+RESULT_PATH = 'results/rf/'
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 '''If true, save a prediction on a sample image after evaluation'''
 SAVE_PREDICTION = True
 
 '''Activate evaluation or not'''
-METRICS = True
+METRICS = False
 
 '''Activate receptive field computation or not'''
-RECEPTIVE_FIELD = False
+RECEPTIVE_FIELD = True
 
 def evaluate(model, dataset, num_classes=10, batch_size=16, device=DEVICE):
     '''Evaluate a model on a specific dataset'''
@@ -84,28 +84,26 @@ def plot_metrics(model, dataset, metrics):
     plt.text(1, recall * 100,str(round(float(recall * 100), ndigits=2)))
     plt.text(2, dice_score * 100, str(round(float(dice_score * 100), ndigits=2)))
 
-def plot_receptive_field(rf_params, dataset):
-    '''rf_params must be computed with the PytorchReceptiveField class
-    using rf.compute method'''
+def plot_receptive_field(model, dataset, fig):
+    '''Plot the receptive field of the model on a sample image'''
     sample_image, sample_mask = dataset[0]
-    width = rf_params[0].rf.size.w
-    height = rf_params[0].rf.size.h
-
-    plt.imshow(sample_image.permute(1, 2, 0)[:,:,0], cmap = 'gray')
+    size = model.get_receptive_field(dilation=kwargs['dilation'])
+    width, height = size//2, size//2
+    fig.imshow(sample_image.permute(1, 2, 0)[:,:,0], cmap = 'gray')
     # Select the center of receptive field (center on a foreground object)
     y_pos, x_pos = torch.argmax(sample_mask) // 224 + 9, torch.argmax(sample_mask) % 224 + 12
-    plt.plot(x_pos, y_pos, 'ro')
+    fig.plot(x_pos, y_pos, 'ro')
     
     # Plot a square around the receptive field and color it in red
-    plt.plot([x_pos - width, x_pos + width], [y_pos - height, y_pos - height], 'r')
-    plt.plot([x_pos - width, x_pos + width], [y_pos + height, y_pos + height], 'r')
-    plt.plot([x_pos - width, x_pos - width], [y_pos - height, y_pos + height], 'r')
-    plt.plot([x_pos + width, x_pos + width], [y_pos - height, y_pos + height], 'r')
-    plt.fill([x_pos - width, x_pos + width, x_pos + width, x_pos - width], [y_pos - height, y_pos - height, y_pos + height, y_pos + height], 'r', alpha=0.3)
+    fig.plot([x_pos - width, x_pos + width], [y_pos - height, y_pos - height], 'r')
+    fig.plot([x_pos - width, x_pos + width], [y_pos + height, y_pos + height], 'r')
+    fig.plot([x_pos - width, x_pos - width], [y_pos - height, y_pos + height], 'r')
+    fig.plot([x_pos + width, x_pos + width], [y_pos - height, y_pos + height], 'r')
+    fig.fill([x_pos - width, x_pos + width, x_pos + width, x_pos - width], [y_pos - height, y_pos - height, y_pos + height, y_pos + height], 'r', alpha=0.3)
     
-    plt.xlim(0, 224)
-    plt.ylim(224, 0)
-    plt.axis('off')
+    fig.set_xlim(0, 224)
+    fig.set_ylim(224, 0)
+    fig.axis('off')
     
 
 
@@ -137,13 +135,33 @@ def save_metrics(metrics_mean, metrics_var, model_name, receptive_field=None):
 if __name__ == "__main__":
     model_names = [
         'unet_test_d1',
+        'unet_test_d2',
+        'unet_test_d3',
+        'unet_test_d4',
+        'unet_test_d5',
+        'unet_test_d1_dil2',
+        'unet_test_d2_dil2',
+        'unet_test_d3_dil2',
+        'unet_test_d4_dil2',
+        'unet_test_d5_dil2',
+        'unet_test_d1_dil3',
+        'unet_test_d2_dil3',
+        'unet_test_d3_dil3',
+        'unet_test_d4_dil3',
+        'unet_test_d5_dil3',
+        'unet_test_d1_dil4',
+        'unet_test_d2_dil4',
+        'unet_test_d3_dil4',
+        'unet_test_d4_dil4',
+        'unet_test_d5_dil4',
     ]
 
     
     
     
     # EVALUATION
-    rf_fig = plt.figure(figsize=(25, 20))
+    rf_fig, fig_ax = plt.subplots(figsize=(25, 20), nrows=4, ncols=5)
+    fig_ax = fig_ax.flatten()
     for i, model_name in enumerate(model_names):
         print(f'Evaluating {model_name} ({i+1}/{len(model_names)})')
         
@@ -165,17 +183,11 @@ if __name__ == "__main__":
             model = UNet(**kwargs)
             model.eval()
             return model
-        
-        if RECEPTIVE_FIELD:
-            rf = PytorchReceptiveField(model_fn)
-            rf_params = rf.compute(input_shape=(224, 224, 1))
-            rf_fig.add_subplot(4,5,i+1, label=f'{i+1}')
-            plot_receptive_field(rf_params=rf_params, dataset=dataset)
-        
-        
+        rf = model.get_receptive_field(dilation=kwargs['dilation'])
+          
         if METRICS:
             if RECEPTIVE_FIELD:
-                save_metrics(mean_metrics, var_metrics, model_name, rf_params)
+                save_metrics(mean_metrics, var_metrics, model_name, rf)
             else:
                 save_metrics(mean_metrics, var_metrics, model_name)
                 
@@ -190,11 +202,10 @@ if __name__ == "__main__":
             plot_prediction(model=model, dataset=dataset, fig=figure)
             plt.savefig(RESULT_PATH + f'{model_name}_pred2.png', bbox_inches='tight')
             if RECEPTIVE_FIELD:
-                rf_fig.add_subplot(5,4,i+1, label=f'{i+1}')
-                plt.figure(f'{i+1}')
-                plot_receptive_field(rf_params=rf_params, dataset=dataset)
+                plot_receptive_field(model=model, dataset=dataset, fig=fig_ax[i])
         
     rf_fig.savefig(RESULT_PATH + f'{model_name}_rf.png', bbox_inches='tight')
+    plt.show()
 
         
     
