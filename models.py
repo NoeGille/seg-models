@@ -218,7 +218,6 @@ class UNETR(nn.Module):
   
     if len(self.skip_connections) == 4:
       x3 = torch.cat((feature_2, feature_3), 1)
-      print(x3.shape)
       x3 = self.dc3(x3)
       x3 = self.du3(x3)
 
@@ -238,4 +237,6 @@ class UNETR(nn.Module):
     return out
   
   def attention_map(self, x):
+    '''Returns a list of attention maps for each block'''
     return self.vit.attention_map(x)
+  

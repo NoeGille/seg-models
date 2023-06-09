@@ -1,4 +1,4 @@
-from dataset_florian import FashionMNISTDataset
+from dataset_florian import FashionMNISTDataset, FashionMNISTDatasetRGB
 from torch.utils.data import DataLoader
 from metrics import MetricsManager
 import matplotlib.pyplot as plt
@@ -13,19 +13,19 @@ from receptivefield.image import get_default_image
 
 # CONSTANTS
 
-MODEL_PATH = 'models/test/'
-DATASET_PATH = 'datasets/test/'
-RESULT_PATH = 'results/rf/'
+MODEL_PATH = 'models/'
+DATASET_PATH = 'datasets/'
+RESULT_PATH = 'results/'
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 '''If true, save a prediction on a sample image after evaluation'''
 SAVE_PREDICTION = True
 
 '''Activate evaluation or not'''
-METRICS = False
+METRICS = True
 
 '''Activate receptive field computation or not'''
-RECEPTIVE_FIELD = True
+RECEPTIVE_FIELD = False
 
 def evaluate(model, dataset, num_classes=10, batch_size=16, device=DEVICE):
     '''Evaluate a model on a specific dataset'''
@@ -134,26 +134,8 @@ def save_metrics(metrics_mean, metrics_var, model_name, receptive_field=None):
 
 if __name__ == "__main__":
     model_names = [
-        'unet_test_d1',
-        'unet_test_d2',
-        'unet_test_d3',
-        'unet_test_d4',
-        'unet_test_d5',
-        'unet_test_d1_dil2',
-        'unet_test_d2_dil2',
-        'unet_test_d3_dil2',
-        'unet_test_d4_dil2',
-        'unet_test_d5_dil2',
-        'unet_test_d1_dil3',
-        'unet_test_d2_dil3',
-        'unet_test_d3_dil3',
-        'unet_test_d4_dil3',
-        'unet_test_d5_dil3',
-        'unet_test_d1_dil4',
-        'unet_test_d2_dil4',
-        'unet_test_d3_dil4',
-        'unet_test_d4_dil4',
-        'unet_test_d5_dil4',
+        'unetr_depth4_np',
+        'unetr_depth4_sc0123'
     ]
 
     
@@ -183,7 +165,8 @@ if __name__ == "__main__":
             model = UNet(**kwargs)
             model.eval()
             return model
-        rf = model.get_receptive_field(dilation=kwargs['dilation'])
+        if RECEPTIVE_FIELD:
+            rf = model.get_receptive_field(dilation=kwargs['dilation'])
           
         if METRICS:
             if RECEPTIVE_FIELD:
@@ -203,9 +186,10 @@ if __name__ == "__main__":
             plt.savefig(RESULT_PATH + f'{model_name}_pred2.png', bbox_inches='tight')
             if RECEPTIVE_FIELD:
                 plot_receptive_field(model=model, dataset=dataset, fig=fig_ax[i])
-        
-    rf_fig.savefig(RESULT_PATH + f'{model_name}_rf.png', bbox_inches='tight')
-    plt.show()
+    
+    if RECEPTIVE_FIELD:  
+        rf_fig.savefig(RESULT_PATH + f'{model_name}_rf.png', bbox_inches='tight')
+        plt.show()
 
         
     

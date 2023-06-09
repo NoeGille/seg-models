@@ -141,9 +141,9 @@ if __name__ == "__main__":
     # CONSTANTS
 
     DATASET_PATH = 'datasets/'
-    DATASET_NAME = 'data_rgb_b_len_1000'
+    DATASET_NAME = 'data_rgb_b_noise_len_10k'
 
-    length = 1000
+    length = 10000
     num_background = 5
     labels = [0, 1, 2]
     not_labels = [0, 1, 2]
@@ -170,7 +170,7 @@ if __name__ == "__main__":
 
     # GENERATING DATASETS
 
-    data = FashionMNISTDatasetRGB(dataset = train_dataset, transform = valid_transform, length = length, labels = labels, not_labels = not_labels, background_obj = num_background, include_label=True, triangle_mode=True, noise=False)
+    data = FashionMNISTDatasetRGB(dataset = train_dataset, transform = valid_transform, length = length, labels = labels, not_labels = not_labels, background_obj = num_background, include_label=True, triangle_mode=True, noise=True)
 
     print(data[0][0].shape)
     train_data, valid_data = random_split(data, [0.7, 0.3])

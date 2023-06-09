@@ -18,7 +18,6 @@ DATASET_PATH = 'datasets/'
 MODEL_PATH = 'models/'
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-
 NUM_CLASSES = 10
 BATCH_SIZE = 16
 INPUT_SIZE = (224, 224, 1)
@@ -182,9 +181,8 @@ training_params = [[model class, kwargs, learning rate, epochs, model name, data
 
 # <!> Look at pretrained model for UNETR to save some time <!>
 training_params = [
-    [UNETR, {'depth':1, 'skip_connections':[0], 'pretrained_name': 'vit_base_patch16_224', 'num_classes':NUM_CLASSES}, 0.001, 25, 'unetr_depth1', 'data_rgb_b_len_1000'],
-    #[UNETR, {'depth':2, 'skip_connections':[1], 'pretrained_name': 'vit_base_patch16_224'}, 0.001, 25, 'unetr_depth2', 'data_hard_b_len1000'],
-    #[UNETR, {'depth':4, 'skip_connections':[3], 'pretrained_name': 'vit_base_patch16_224'}, 0.001, 100, 'unetr_depth4', 'data_hard_b_len1000'],
+    [UNETR, {'depth':4, 'skip_connections':[3], 'pretrained_name': None, 'num_classes':NUM_CLASSES}, 0.001, 20, 'unetr_depth4_np', 'data_rgb_b_noise_len_10k'],
+    [UNETR, {'depth':4, 'skip_connections':[0,1,2,3], 'pretrained_name': 'vit_base_patch16_224', 'num_classes':NUM_CLASSES}, 0.001, 20, 'unetr_depth4_np', 'data_rgb_b_noise_len_10k'],
 ]
 
 '''
@@ -205,6 +203,7 @@ continue_training_params = [
     ['unet_pre4', 25, 0.001, 'data_hard_b_len1000', lambda model: UNet_freeze(model, [], freeze_bottleneck=False), 'unet_frozen_all'],
     ['unet_pre4', 25, 0.001, 'data_hard_b_len1000', lambda model: UNet_freeze(model, [1,2,3,4], freeze_bottleneck=False), 'unet_frozen_bottle'],
 ]
+
 
 for i, params in enumerate(training_params):
     print(f'Training model {i+1}/{len(training_params)}')

@@ -73,7 +73,29 @@ class Attention(nn.Module):
         x = self.proj_drop(x)  # (n_samples, n_patches + 1, dim)
 
         return x
+    
+    def get_attention(self, x):
+        n_samples, n_tokens, dim = x.shape
 
+        if dim != self.dim:
+            raise ValueError
+
+        qkv = self.qkv(x)  # (n_samples, n_patches + 1, 3 * dim)
+        qkv = qkv.reshape(
+                n_samples, n_tokens, 3, self.n_heads, self.head_dim
+        )  # (n_smaples, n_patches + 1, 3, n_heads, head_dim)
+        qkv = qkv.permute(
+                2, 0, 3, 1, 4
+        )  # (3, n_samples, n_heads, n_patches + 1, head_dim)
+
+        q, k, v = qkv[0], qkv[1], qkv[2]
+        k_t = k.transpose(-2, -1)  # (n_samples, n_heads, head_dim, n_patches + 1)
+        dp = (
+           q @ k_t
+        ) * self.scale # (n_samples, n_heads, n_patches + 1, n_patches + 1)
+        attn = dp.softmax(dim=-1)  # (n_samples, n_heads, n_patches + 1, n_patches + 1)
+
+        return attn
 
 class MLP(nn.Module):
     def __init__(self, in_features, hidden_features, out_features, p=0.):
@@ -121,8 +143,8 @@ class Block(nn.Module):
         return x
     
     def get_attn(self, x):
-        x = self.attn(self.norm1(x))
-        return x
+        return self.attn.get_attention(self.norm1(x))
+        
 
 
 class VisionTransformer(nn.Module):
@@ -196,6 +218,7 @@ class VisionTransformer(nn.Module):
         return features
 
     def attention_map(self, x):
+        '''Returns a list of attention maps for each block'''
         n_samples = x.shape[0]
         x = self.patch_embed(x)
 
