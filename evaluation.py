@@ -10,12 +10,14 @@ import numpy as np
 import torch
 from receptivefield.pytorch import PytorchReceptiveField
 from receptivefield.image import get_default_image
+import segmentation_models_pytorch as smp
+
 
 # CONSTANTS
 
 MODEL_PATH = 'models/'
 DATASET_PATH = 'datasets/'
-RESULT_PATH = 'results/'
+RESULT_PATH = 'results/unetr_lr/'
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 '''If true, save a prediction on a sample image after evaluation'''
@@ -134,8 +136,7 @@ def save_metrics(metrics_mean, metrics_var, model_name, receptive_field=None):
 
 if __name__ == "__main__":
     model_names = [
-        'unetr_depth4_np',
-        'unetr_depth4_sc0123'
+        'unetr_depth3_sc012_pre'
     ]
 
     
@@ -153,7 +154,7 @@ if __name__ == "__main__":
         kwargs = checkpoint['kwargs']
         
         dataset_name = checkpoint['datasets']
-        dataset = torch.load(DATASET_PATH + 'valid_' + dataset_name + '.pt')
+        dataset = torch.load(DATASET_PATH + 'valid_' +dataset_name + '.pt')
         
         model = checkpoint['model_class'](**kwargs)
         model.load_state_dict(checkpoint['model_state_dict'])

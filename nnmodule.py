@@ -1,5 +1,7 @@
-import torch
+import torchvision.transforms as transforms
 import torch.nn as nn
+import numpy as np
+import torch
 import timm
 # UNETR
 
@@ -95,6 +97,7 @@ class Attention(nn.Module):
         ) * self.scale # (n_samples, n_heads, n_patches + 1, n_patches + 1)
         attn = dp.softmax(dim=-1)  # (n_samples, n_heads, n_patches + 1, n_patches + 1)
 
+        #return torch.min(attn, dim=1)[0]
         return attn
 
 class MLP(nn.Module):
@@ -233,10 +236,65 @@ class VisionTransformer(nn.Module):
         
         for block in self.blocks:
             x = block(x)
-            attn_x = block.get_attn(x)
-            attentions.append(attn_x.clone())
+            attn_x = block.get_attn(x).mean(dim=1)
+            attentions.append(attn_x.clone().detach().cpu().numpy()) # dim : (n_blocks, n_samples, n_patches + 1, n_patches + 1)
         
-        return attentions
+        return torch.Tensor(np.array(attentions)).permute(1, 0, 2, 3)
+    
+    def attention_rollout(self, x, discard_ratio=0.8, head_fusion='mean'):
+        '''Returns a list of all attention rollouts for each block. 
+        Attention rollout is the dot product between the attention map of the current layer and the attention map of the previous layers.
+        The alogirthm is simple :
+        if i == 0:
+            rollouts[i] = attention_maps[i]
+        else:
+            rollout[i] = attention_maps[i] @ rollouts[i-1]'''
+        n_samples = x.shape[0]
+        x = self.patch_embed(x)
+
+        attention_maps = []
+
+        cls_token = self.cls_token.expand(
+                n_samples, -1, -1
+        )  # (n_samples, 1, embed_dim)
+        x = torch.cat((cls_token, x), dim=1)  # (n_samples, 1 + n_patches, embed_dim)
+        x = x + self.pos_embed  # (n_samples, 1 + n_patches, embed_dim)
+        x = self.pos_drop(x)
+        
+        # How much of the lowest attention values is dropped
+        for block in self.blocks:
+            x = block(x)
+            attn_x = block.get_attn(x) # dim : (n_samples, n_heads, n_patches + 1, n_patches + 1)
+            attention_maps.append(attn_x.clone().detach().cpu().numpy()) 
+        
+        attention_maps = torch.Tensor(np.array(attention_maps))
+        print(attention_maps.shape) # dim : (n_blocks, n_heads, n_patches + 1, n_patches + 1)
+        result = torch.eye(attention_maps[0].shape[-1], device=attention_maps[0].device)
+
+        result_list = []
+
+        for attn_x in attention_maps:
+            if head_fusion == 'mean':
+                attention_heads_fused = attn_x.mean(dim=1) # dim : (n_samples, n_patches + 1, n_patches + 1)
+            elif head_fusion == 'max':
+                attention_heads_fused = attn_x.max(dim=1)[0] # dim : (n_samples, n_patches + 1, n_patches + 1)
+            elif head_fusion == 'min':
+                attention_heads_fused = attn_x.min(dim=1)[0] # dim : (n_samples, n_patches + 1, n_patches + 1)
+            else:
+                raise "Attention head fusion type Not supported"
+            flat = attention_heads_fused.view(attention_heads_fused.shape[0], attention_heads_fused.shape[1], -1) # dim : (n_samples, n_patches + 1, n_patches + 1)
+            _, indices = flat.topk(int(flat.size(-1) * discard_ratio), -1, False)
+            indices = indices[indices != 0]
+            flat[0, indices] = 0
+            
+            I = torch.eye(attention_heads_fused.shape[-1], device=attention_heads_fused.device)
+            a = (attention_heads_fused + 1.0*I)/2
+            a = a / a.sum(dim=-1)
+
+            result = torch.matmul(a, result)
+            result_list.append(result.clone())
+
+        return result_list
 
 class Deconv(nn.Module):
   # Used by UNETR
@@ -340,7 +398,7 @@ class ResidualConnection(nn.Module):
         '''in_channels has the same dimensions as out_channels'''
 
         super(ResidualConnection, self).__init__()
-        self.conv = DoubleConvolution(in_channels * 2, out_channels)
+        self.conv = DoubleConvolution(in_channels, out_channels)
 
     def forward(self, x1, x2):
         x = torch.cat([x2, x1], dim=1)

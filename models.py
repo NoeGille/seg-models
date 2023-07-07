@@ -5,7 +5,7 @@ from rf_function import conv, upsample, downsample
 
 class UNet(nn.Module):
 
-    NB_OF_FILTERS = 16
+    NB_OF_FILTERS = 64
 
     def __init__(self, input_size, num_classes:int=10, depth:int=2, dilation:int=1):
         '''### Initialize a UNet model
@@ -14,63 +14,49 @@ class UNet(nn.Module):
         depth : the number of blocks (depth of the model)
         dilation : dilation rate of the convolutional layers (1 means basic convolution))'''
         super(UNet, self).__init__()
-        
-        channels = [input_size[-1]] + [self.NB_OF_FILTERS * (i + 1) for i in range(depth)]
-        # List of downsampling block + first downsampling block
-        self.dblocks = nn.ModuleList([DownSampleBlock(in_channels=channels[0], out_channels=channels[1], dilation=dilation)])
-        self.bottleneck = DoubleConvolution(in_channels=channels[-1], out_channels=channels[-1], dilation=dilation)
-        # Concatenate outputs from encoder and decoder to keep tracks of objects positions
-        self.res_connect = nn.ModuleList([ResidualConnection(in_channels=channels[1], out_channels=num_classes)])
-        # List of Upsampling block + last upsampling block
-        self.ublocks = nn.ModuleList([UpSampleBlock(in_channels=channels[1])])
 
-        for i in range(1,depth):
-            # The number of channels double each time the depth increases
-            self.dblocks.append(DownSampleBlock(in_channels=channels[i], out_channels=channels[i + 1], dilation=dilation))
-            self.res_connect.append(ResidualConnection(in_channels=channels[i + 1], out_channels=channels[i]))
-            self.ublocks.append(UpSampleBlock(in_channels=channels[i + 1]))
-        self.output = nn.Conv2d(in_channels=num_classes, out_channels=num_classes,
-                               kernel_size=(3, 3), stride=(1, 1), padding=(1,1))
-        # Used by PytorchReceptiveField
-        self.feature = self._make_features()
+        in_channels = input_size[-1]
+        channels = [in_channels, 64, 128, 256, 512, 1024, 2048]
+        channels = channels[:depth + 2]
+        print(channels)
+        self.down_samples_blocks = nn.ModuleList([])
+        self.up_samples_blocks = nn.ModuleList([])
+        self.residual_connections = nn.ModuleList([])
+        self.bottleneck = DoubleConvolution(in_channels=channels[-2], out_channels=channels[-1], dilation=dilation)
+        self.segmentation_head = nn.Conv2d(in_channels=channels[1], out_channels=num_classes,
+                                kernel_size=(3, 3), stride=(1, 1), padding=(1,1))
+        for i in range(depth):
+            self.down_samples_blocks.append(DownSampleBlock(in_channels=channels[i], out_channels=channels[i + 1], dilation=dilation))
+            self.residual_connections.append(ResidualConnection(in_channels=channels[i + 2], out_channels=channels[i + 1]))
+            self.up_samples_blocks.append(UpSampleBlock(in_channels=channels[i + 2], out_channels=channels[i + 1]))
 
     def forward(self, x):
         self.feature_maps = []
-
         # Encoder
         # Copy of output of each blocks before downsampling
         xs_down =[]
-        for i, down_block in enumerate(self.dblocks):
+        for i, down_block in enumerate(self.down_samples_blocks):
             x, copy = down_block.forward(x)
             xs_down.append(copy)
+
+
         x = self.bottleneck.forward(x)
         xs_down = xs_down[::-1]
         # Decoder
-        for i, (up_block, r_conn) in enumerate(zip(reversed(self.ublocks), reversed(self.res_connect))):
+        for i, (up_block, r_conn) in enumerate(zip(reversed(self.up_samples_blocks), reversed(self.residual_connections))):
             x_up = up_block.forward(x)
             x = r_conn(x_up, xs_down[i])
-        self.feature_maps.append(x)
-        x = self.output(x)
-        
-        
+            
+        x = self.segmentation_head(x)
         return x
-
-    def _make_features(self):
-        '''Used by PytorchReceptiveField'''
-        return nn.Sequential(
-            *self.dblocks,
-            self.bottleneck,
-            *self.ublocks,
-            self.output
-        )
     
     def get_receptive_field(self, dilation=1):
         '''Compute the receptive field of the model. The dilation used when creating the model should be specified'''
         rf = 1
-        for up_block in self.ublocks:
+        for up_block in self.up_samples_blocks:
             rf = upsample(rf)
         rf = conv(conv(rf, dilation=dilation), dilation=dilation)
-        for down_block in self.dblocks:
+        for down_block in self.down_samples_blocks:
             rf = downsample(rf, dilation=dilation)
         return rf
 
@@ -240,3 +226,11 @@ class UNETR(nn.Module):
     '''Returns a list of attention maps for each block'''
     return self.vit.attention_map(x)
   
+  def attention_rollout_map(self, x, discard_ratio=0.8, head_fusion='mean'):
+     '''Returns a list of attention rollout maps for each block'''
+     return self.vit.attention_rollout(x, discard_ratio, head_fusion)
+
+  if __name__ == "__main__":
+     # Create UNET model
+
+    model = UNet(input_size=(3, 224, 224), num_classes=10, depth=4, dilation=1)

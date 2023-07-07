@@ -9,6 +9,7 @@ import numpy as np
 import torch
 import wandb
 from carbontracker.tracker import CarbonTracker
+from metrics import LossManager
 
 
 
@@ -20,7 +21,7 @@ DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 NUM_CLASSES = 10
 BATCH_SIZE = 16
-INPUT_SIZE = (224, 224, 1)
+INPUT_SIZE = (224, 224, 3)
 
 def continue_training(model_name, epochs, learning_rate, dataset_name, freezing_function:callable = lambda x: None, new_model_name = None):
     '''load and train a pretrained model on a specified dataset
@@ -47,13 +48,12 @@ def continue_training(model_name, epochs, learning_rate, dataset_name, freezing_
     print(f'Loading dataset {dataset_name}')
     train_data = torch.load(DATASET_PATH + 'train_' + dataset_name + '.pt')
     train_dataloader= DataLoader(train_data, batch_size = BATCH_SIZE, shuffle = False)
-
-    tracker = CarbonTracker(epochs=epochs, log_dir="logs/" + model_name)
     
+    loss_manager = LossManager()
+
     # TRAINING
     for epoch in range(epochs):
         print(f'Epoch {epoch+1}/{epochs}')
-        tracker.epoch_start()
         for img, mask in tqdm(train_dataloader):
             
             img = img.to(device=DEVICE)
@@ -69,11 +69,11 @@ def continue_training(model_name, epochs, learning_rate, dataset_name, freezing_
             optimizer.zero_grad()
             loss.backward()
 
+            loss_manager.add(loss.item())
+
             # gradient descent or adam step
             optimizer.step()
-        tracker.epoch_end()
-        
-    tracker.stop()
+        loss_manager.epoch_end()
     
     # SAVING MODEL
     if new_model_name is None:
@@ -93,7 +93,10 @@ def continue_training(model_name, epochs, learning_rate, dataset_name, freezing_
         'kwargs':kwargs
         }, MODEL_PATH + new_model_name + '.pt'
     )
-
+    file = open('results/loss/' + f'{model_name}_loss.txt', 'w')
+    for elt in loss_manager.losses:
+        file.write(str(float(elt)) + '\n')
+    file.close()
 
 
 
@@ -115,12 +118,13 @@ def train(model_class, kwargs, learning_rate, epochs, model_name, dataset_name):
     print(f'Training {model.__class__.__name__} with {kwargs} for {epochs} epochs on {dataset_name}')
     print("Number of parameters: ", sum(p.numel() for p in model.parameters() if p.requires_grad))
     
-    #tracker = CarbonTracker(epochs=epochs, log_dir="logs/" + model_name)
-    
+    tracker = CarbonTracker(epochs=epochs, log_dir="logs/" + model_name)
+    loss_manager = LossManager()
+
     # TRAINING
     for epoch in range(epochs):
         print(f'Epoch {epoch+1}/{epochs}')
-        #tracker.epoch_start()
+        tracker.epoch_start()
         for img, mask in tqdm(train_dataloader):
             
             img = img.to(device=DEVICE)
@@ -134,16 +138,18 @@ def train(model_class, kwargs, learning_rate, epochs, model_name, dataset_name):
             # backward
             optimizer.zero_grad()
             loss.backward()
+            loss_manager.add(loss.item())
 
             # gradient descent or adam step
             optimizer.step()
-        #tracker.epoch_end()
-
+        tracker.epoch_end()
+        loss_manager.epoch_end()
+    tracker.stop()
         
     # SAVING MODEL 
     # <!> Every arguments of the model initialization will be saved in kwargs dictionary<!>
     # https://pytorch.org/tutorials/beginner/saving_loading_models.html
-    torch.save(
+    '''torch.save(
     {   
         'input_size':INPUT_SIZE,
         'epochs':epochs,
@@ -157,7 +163,11 @@ def train(model_class, kwargs, learning_rate, epochs, model_name, dataset_name):
         'model_class': model_class,
         'kwargs':kwargs
         }, MODEL_PATH + model_name + '.pt'
-    )
+    )'''
+    file = open('results/loss/' + f'{model_name}_loss.txt', 'w')
+    for elt in loss_manager.losses:
+        file.write(str(float(elt)) + '\n')
+    file.close()
 
 def UNet_freeze(model, layers:list, freeze_bottleneck:bool = False):
     '''Freeze all specified layers of the UNet model
@@ -181,8 +191,20 @@ training_params = [[model class, kwargs, learning rate, epochs, model name, data
 
 # <!> Look at pretrained model for UNETR to save some time <!>
 training_params = [
-    [UNETR, {'depth':4, 'skip_connections':[3], 'pretrained_name': None, 'num_classes':NUM_CLASSES}, 0.001, 20, 'unetr_depth4_np', 'data_rgb_b_noise_len_10k'],
-    [UNETR, {'depth':4, 'skip_connections':[0,1,2,3], 'pretrained_name': 'vit_base_patch16_224', 'num_classes':NUM_CLASSES}, 0.001, 20, 'unetr_depth4_np', 'data_rgb_b_noise_len_10k'],
+    #[UNet, {'num_classes':NUM_CLASSES, 'depth': 1, 'dilation':1, 'input_size':INPUT_SIZE}, 0.001, 100, 'unet_tracker_d1', 'data_hard_b_len1000'],
+    #[UNet, {'num_classes':NUM_CLASSES, 'depth': 2, 'dilation':1, 'input_size':INPUT_SIZE}, 0.001, 100, 'unet_tracker_d2', 'data_hard_b_len1000'],
+    #[UNet, {'num_classes':NUM_CLASSES, 'depth': 3, 'dilation':1, 'input_size':INPUT_SIZE}, 0.001, 100, 'unet_tracker_d3', 'data_hard_b_len1000'],
+    #[UNet, {'num_classes':NUM_CLASSES, 'depth': 4, 'dilation':1, 'input_size':INPUT_SIZE}, 0.001, 100, 'unet_tracker_d4', 'data_hard_b_len1000'],
+    #[UNet, {'num_classes':NUM_CLASSES, 'depth': 5, 'dilation':1, 'input_size':INPUT_SIZE}, 0.001, 100, 'unet_tracker_d5', 'data_hard_b_len1000'],
+    #[UNETR, {'depth':1, 'skip_connections':[0], 'pretrained_name': None, 'num_classes':NUM_CLASSES, 'in_chans': INPUT_SIZE[-1]}, 0.001, 100, 'unetr_tracker_d1', 'data_rgb_b_len_1000'],
+    #[UNETR, {'depth':2, 'skip_connections':[1], 'pretrained_name': None, 'num_classes':NUM_CLASSES, 'in_chans': INPUT_SIZE[-1]}, 0.001, 100, 'unetr_tracker_d2', 'data_rgb_b_len_1000'],
+    #[UNETR, {'depth':3, 'skip_connections':[2], 'pretrained_name': None, 'num_classes':NUM_CLASSES, 'in_chans': INPUT_SIZE[-1]}, 0.001, 100, 'unetr_tracker_d2', 'data_rgb_b_len_1000'],
+    #[UNETR, {'depth':6, 'skip_connections':[2,5], 'pretrained_name': None, 'num_classes':NUM_CLASSES, 'in_chans': INPUT_SIZE[-1]}, 0.001, 100, 'unetr_tracker_d4', 'data_rgb_b_len_1000'],
+    #[UNETR, {'depth':9, 'skip_connections':[2, 5, 8], 'pretrained_name': None, 'num_classes':NUM_CLASSES, 'in_chans': INPUT_SIZE[-1]}, 0.001, 100, 'unetr_tracker_d4', 'data_rgb_b_len_1000'],
+    #[UNETR, {'depth':12, 'skip_connections':[2,5,8,11], 'pretrained_name': None, 'num_classes':NUM_CLASSES, 'in_chans': INPUT_SIZE[-1]}, 0.001, 100, 'unetr_tracker_d12', 'data_rgb_b_len_1000'],
+
+    #[UNETR, {'depth':1, 'skip_connections':[0], 'pretrained_name': None, 'num_classes':NUM_CLASSES}, 0.001, 20, 'unetr_depth1_np', 'data_rgb_b_noise_len_10k'],
+    #[UNETR, {'depth':4, 'skip_connections':[0,1,2,3], 'pretrained_name': 'vit_base_patch16_224', 'num_classes':NUM_CLASSES}, 0.001, 20, 'unetr_depth4_np', 'data_rgb_b_noise_len_10k'],
 ]
 
 '''
@@ -192,7 +214,12 @@ Training parameters for comuting the receptive field TODO
 
 # For pre-trained models
 continue_training_params = [
-    ['unet_pre4', 25, 0.001, 'data_hard_b_len1000', lambda model: UNet_freeze(model, [2,3,4], freeze_bottleneck=True), 'unet_frozen_nobottle_1'],
+    ['unet_unetr_lr_loss', 80, 0.0001, 'data_rgb_b_noise_len_10k', lambda model: model, 'unet_unetr_lr_loss_e100'],
+    
+    
+]
+
+'''['unet_pre4', 25, 0.001, 'data_hard_b_len1000', lambda model: UNet_freeze(model, [2,3,4], freeze_bottleneck=True), 'unet_frozen_nobottle_1'],
     ['unet_pre4', 25, 0.001, 'data_hard_b_len1000', lambda model: UNet_freeze(model, [1,3,4], freeze_bottleneck=True), 'unet_frozen_nobottle_2'],
     ['unet_pre4', 25, 0.001, 'data_hard_b_len1000', lambda model: UNet_freeze(model, [1,2,4], freeze_bottleneck=True), 'unet_frozen_nobottle_3'],
     ['unet_pre4', 25, 0.001, 'data_hard_b_len1000', lambda model: UNet_freeze(model, [1,2,3], freeze_bottleneck=True), 'unet_frozen_nobottle_4'],
@@ -201,14 +228,12 @@ continue_training_params = [
     ['unet_pre4', 25, 0.001, 'data_hard_b_len1000', lambda model: UNet_freeze(model, [1,2,4], freeze_bottleneck=False), 'unet_frozen_3'],
     ['unet_pre4', 25, 0.001, 'data_hard_b_len1000', lambda model: UNet_freeze(model, [1,2,3], freeze_bottleneck=False), 'unet_frozen_4'],
     ['unet_pre4', 25, 0.001, 'data_hard_b_len1000', lambda model: UNet_freeze(model, [], freeze_bottleneck=False), 'unet_frozen_all'],
-    ['unet_pre4', 25, 0.001, 'data_hard_b_len1000', lambda model: UNet_freeze(model, [1,2,3,4], freeze_bottleneck=False), 'unet_frozen_bottle'],
-]
-
+    ['unet_pre4', 25, 0.001, 'data_hard_b_len1000', lambda model: UNet_freeze(model, [1,2,3,4], freeze_bottleneck=False), 'unet_frozen_bottle'],'''
 
 for i, params in enumerate(training_params):
     print(f'Training model {i+1}/{len(training_params)}')
     train(*params)
 
-'''for i, params in enumerate(continue_training_params):
+for i, params in enumerate(continue_training_params):
     print(f'Training model {i+1}/{len(continue_training_params)}')
-    continue_training(*params)'''
+    continue_training(*params)

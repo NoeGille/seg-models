@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Specify the path to the CSV file
-csv_file = 'new_output2.csv'
+csv_file = 'new_ouput2.csv'
 
 # Initialize empty lists to store data
 file_names = []
@@ -15,6 +15,7 @@ dice_score = []
 with open(csv_file, 'r') as csvfile:
     reader = csv.DictReader(csvfile, delimiter=',')
     for row in reader:
+        print(row)
         file_names.append(row['File'])
         precision.append(float(row['Precision']))
         recall.append(float(row['Recall']))
@@ -46,7 +47,7 @@ def get_layer_name(file_name):
     elif layer_num == '4':
         return '4th'
     if 'bottle' in file_name:
-        return 'bottle'
+        return 'Bottleneck'
     else:
         return layer_num + 'th'
 
@@ -68,12 +69,12 @@ ax[0].bar(np.arange(num_frozen) + num_pretrained, precision[num_pretrained:num_p
             label='With bottleneck', color='red')
 ax[0].bar(np.arange(num_frozen_nobottle) + num_pretrained + num_frozen, precision[num_pretrained + num_frozen:num_pretrained + num_frozen + num_frozen_nobottle],
             label='Without bottleneck', color='green')
-ax[0].bar(np.arange(num_all) + num_pretrained + num_frozen + num_frozen_nobottle, precision[num_pretrained + num_frozen + num_frozen_nobottle:], color='gray')
-ax[0].set_xticks(np.arange(num_frozen + num_frozen_nobottle + num_all + num_pretrained))
-ax[0].set_xticklabels([get_layer_name(name) for name in np.concatenate((pretrained_file_names, frozen_file_names, frozen_nobottle_file_names, all_file_names), axis=0)], rotation=45)
+ax[0].axhline(y=precision[num_pretrained + num_frozen + num_frozen_nobottle:], color='black', linestyle='--')
+ax[0].set_xticks(np.arange(num_frozen + num_frozen_nobottle + num_pretrained))
+ax[0].set_xticklabels([get_layer_name(name) for name in np.concatenate((pretrained_file_names, frozen_file_names, frozen_nobottle_file_names), axis=0)], rotation=45)
 ax[0].set_xlabel('Layers')
 ax[0].set_ylabel('Precision')
-ax[0].set_title('Precision Comparison')
+ax[0].set_title('Precision')
 ax[0].set_yticks(np.arange(0, 1.1, 0.1))
 
 ax[0].legend()
@@ -84,12 +85,12 @@ ax[1].bar(np.arange(num_frozen) + num_pretrained, recall[num_pretrained:num_pret
             label='With bottleneck', color='red')
 ax[1].bar(np.arange(num_frozen_nobottle) + num_pretrained + num_frozen, recall[num_pretrained + num_frozen:num_pretrained + num_frozen + num_frozen_nobottle],
             label='Without bottleneck', color='green')
-ax[1].bar(np.arange(num_all) + num_pretrained + num_frozen + num_frozen_nobottle, recall[num_pretrained + num_frozen + num_frozen_nobottle:], color='gray')
-ax[1].set_xticks(np.arange(num_frozen + num_frozen_nobottle + num_all + num_pretrained))
-ax[1].set_xticklabels([get_layer_name(name) for name in np.concatenate((pretrained_file_names, frozen_file_names, frozen_nobottle_file_names, all_file_names), axis=0)], rotation=45)
+ax[1].axhline(y=recall[num_pretrained + num_frozen + num_frozen_nobottle:], color='black', linestyle='--')
+ax[1].set_xticks(np.arange(num_frozen + num_frozen_nobottle + num_pretrained))
+ax[1].set_xticklabels([get_layer_name(name) for name in np.concatenate((pretrained_file_names, frozen_file_names, frozen_nobottle_file_names), axis=0)], rotation=45)
 ax[1].set_xlabel('Layers')
 ax[1].set_ylabel('Recall')
-ax[1].set_title('Recall Comparison')
+ax[1].set_title('Recall')
 ax[1].set_yticks(np.arange(0, 1.1, 0.1))
 
 ax[1].legend()
@@ -100,13 +101,13 @@ ax[2].bar(np.arange(num_frozen) + num_pretrained, dice_score[num_pretrained:num_
             label='With bottleneck', color='red')
 ax[2].bar(np.arange(num_frozen_nobottle) + num_pretrained + num_frozen, dice_score[num_pretrained + num_frozen:num_pretrained + num_frozen + num_frozen_nobottle],
             label='Without bottleneck', color='green')
-ax[2].bar(np.arange(num_all) + num_pretrained + num_frozen + num_frozen_nobottle, dice_score[num_pretrained + num_frozen + num_frozen_nobottle:], color='gray')
+ax[2].axhline(y=dice_score[num_pretrained + num_frozen + num_frozen_nobottle:], color='black', linestyle='--')
 
-ax[2].set_xticks(np.arange(num_frozen + num_frozen_nobottle + num_all + num_pretrained))
-ax[2].set_xticklabels([get_layer_name(name) for name in np.concatenate((pretrained_file_names, frozen_file_names, frozen_nobottle_file_names, all_file_names), axis=0)], rotation=45)
+ax[2].set_xticks(np.arange(num_frozen + num_frozen_nobottle + num_pretrained))
+ax[2].set_xticklabels([get_layer_name(name) for name in np.concatenate((pretrained_file_names, frozen_file_names, frozen_nobottle_file_names), axis=0)], rotation=45)
 ax[2].set_xlabel('Layers')
 ax[2].set_ylabel('Dice Score')
-ax[2].set_title('Dice Score Comparison')
+ax[2].set_title('Dice Score')
 ax[2].set_yticks(np.arange(0, 1.1, 0.1))
 
 ax[2].legend()
@@ -115,7 +116,7 @@ ax[2].legend()
 plt.tight_layout()
 
 # Save the plot as an image file
-plt.savefig('comparison_plot.png')
+plt.savefig('bar_plot.png')
 
 # Display the plot
 plt.show()

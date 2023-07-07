@@ -77,3 +77,20 @@ class MetricsManager():
         self.metrics['precision'].append(precision)
         self.metrics['recall'].append(recall)
         self.metrics['dice_score'].append(dice_score)
+
+class LossManager():
+    '''Class to manage loss during training
+    Use epoch_end function at the end of each epoch and use
+    losses attribute to access the losses of each epochs'''
+    def __init__(self) -> None:
+        self.losses = []
+        self.current_epoch_losses = []
+
+    def epoch_end(self):
+        self.losses.append(torch.mean(torch.tensor(self.current_epoch_losses)))
+        self.current_epoch_losses = []
+
+    def add(self, loss):
+        '''Add the loss of the current batch to the current epoch losses'''
+        self.current_epoch_losses.append(loss)
+

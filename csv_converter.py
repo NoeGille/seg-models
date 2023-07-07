@@ -2,10 +2,10 @@ import os
 import csv
 
 # Specify the directory where the text files are located
-directory = 'results/pretrained/'
+directory = 'results/new_unetr/'
 
 # Specify the output CSV file name
-output_file = 'new_output2.csv'
+output_file = 'output_unetr.csv'
 
 # Specify the header for the CSV file
 header = ['File', 'Kwargs', 'Dataset', 'Epochs', 'Precision', 'Recall', 'Dice Score', 'Precision Variance', 'Recall Variance', 'Dice Score Variance']
@@ -19,6 +19,7 @@ for filename in os.listdir(directory):
         filepath = os.path.join(directory, filename)
         with open(filepath, 'r') as file:
             content = file.read()
+            print(content)
             # Extract the relevant values from the text file
             kwargs_start = content.index('Kwargs :') + len('Kwargs :')
             kwargs_end = content.index('\n')
@@ -53,8 +54,8 @@ for filename in os.listdir(directory):
             recall_var = content[recall_var_start:recall_var_end].strip()
 
             dice_var_start = content.index('Dice score variance :') + len('Dice score variance :')
-            dice_var_end = content.index('\n', dice_var_start)
-            dice_var = content[dice_var_start:dice_var_end].strip()
+            #dice_var_end = content.index('\n', dice_var_start)
+            dice_var = content[dice_var_start].strip()
 
             # Append the extracted data to the list
             data.append([

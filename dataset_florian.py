@@ -6,6 +6,7 @@ from torchvision import datasets
 from torchvision import transforms
 import numpy as np
 import random
+from functools import lru_cache
 
 train_dataset = datasets.FashionMNIST(root='./data', train = True, download=True)
 valid_dataset = datasets.FashionMNIST(root='./data', train = False, download=True)
@@ -42,6 +43,7 @@ class FashionMNISTDataset(Dataset):
     def __len__(self):
         return self.len
     
+   
     def __getitem__(self, i):
         # Set seed with random_key + index
         random.seed(i + self.random_key)
@@ -126,7 +128,8 @@ class FashionMNISTDatasetRGB(FashionMNISTDataset):
                     include_label = True, length = 10000,
                     triangle_mode = False, seed = -1, noise = False):
         super().__init__(dataset, transform, shape, labels, not_labels, background_obj, include_label, length, triangle_mode, seed, noise)
-        
+    
+    
     def __getitem__(self, i):
         img, mask = super().__getitem__(i)
         
@@ -176,10 +179,10 @@ if __name__ == "__main__":
     train_data, valid_data = random_split(data, [0.7, 0.3])
 
     # SAVING DATASETS
-    torch.save(data, DATASET_PATH + DATASET_NAME + ".pt")
+    #torch.save(data, DATASET_PATH + DATASET_NAME + ".pt")
     
-    torch.save(train_data, DATASET_PATH + "train_" + DATASET_NAME + ".pt")
-    torch.save(valid_data, DATASET_PATH + "valid_" + DATASET_NAME + ".pt")
+    #torch.save(train_data, DATASET_PATH + "train_" + DATASET_NAME + ".pt")
+    #torch.save(valid_data, DATASET_PATH + "valid_" + DATASET_NAME + ".pt")
     
     # PLOTTING SAMPLES
     if True:

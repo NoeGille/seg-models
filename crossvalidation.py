@@ -17,7 +17,7 @@ INPUT_SIZE = (224, 224, 1)
 BATCH_SIZE = 16
 NUM_CLASSES = 10
 MODEL_PATH = 'models/'
-RESULT_PATH = 'results/pretrained/'
+RESULT_PATH = 'results/multiclass/'
 
 def save_metrics(metrics_mean, metrics_var, model_name):
     '''Save metrics and various informations about the model'''
@@ -214,44 +214,25 @@ def UNet_freeze(model, layers:list, freeze_bottleneck:bool = False):
 
 
 if __name__ == "__main__":
-    '''parameters = [
-        [UNet, {'depth':1, 'input_size':INPUT_SIZE, 'dilation':1}, 0.001, 50, 'unet_d1_dil1', 'data_b_len_1000'],
-        [UNet, {'depth':2, 'input_size':INPUT_SIZE, 'dilation':1}, 0.001, 50, 'unet_d2_dil1', 'data_b_len_1000'],
-        [UNet, {'depth':3, 'input_size':INPUT_SIZE, 'dilation':1}, 0.001, 50, 'unet_d3_dil1', 'data_b_len_1000'],
-        [UNet, {'depth':4, 'input_size':INPUT_SIZE, 'dilation':1}, 0.001, 50, 'unet_d4_dil1', 'data_b_len_1000'],
-        [UNet, {'depth':5, 'input_size':INPUT_SIZE, 'dilation':1}, 0.001, 50, 'unet_d5_dil1', 'data_b_len_1000'],
-        [UNet, {'depth':1, 'input_size':INPUT_SIZE, 'dilation':2}, 0.001, 50, 'unet_d1_dil2', 'data_b_len_1000'],
-        [UNet, {'depth':2, 'input_size':INPUT_SIZE, 'dilation':2}, 0.001, 50, 'unet_d2_dil2', 'data_b_len_1000'],
-        [UNet, {'depth':3, 'input_size':INPUT_SIZE, 'dilation':2}, 0.001, 50, 'unet_d3_dil2', 'data_b_len_1000'],
-        [UNet, {'depth':4, 'input_size':INPUT_SIZE, 'dilation':2}, 0.001, 50, 'unet_d4_dil2', 'data_b_len_1000'],
-        [UNet, {'depth':5, 'input_size':INPUT_SIZE, 'dilation':2}, 0.001, 50, 'unet_d5_dil2', 'data_b_len_1000'],
-        [UNet, {'depth':1, 'input_size':INPUT_SIZE, 'dilation':3}, 0.001, 50, 'unet_d1_dil3', 'data_b_len_1000'],
-        [UNet, {'depth':2, 'input_size':INPUT_SIZE, 'dilation':3}, 0.001, 50, 'unet_d2_dil3', 'data_b_len_1000'],
-        [UNet, {'depth':3, 'input_size':INPUT_SIZE, 'dilation':3}, 0.001, 50, 'unet_d3_dil3', 'data_b_len_1000'],
-        [UNet, {'depth':4, 'input_size':INPUT_SIZE, 'dilation':3}, 0.001, 50, 'unet_d4_dil3', 'data_b_len_1000'],
-        [UNet, {'depth':5, 'input_size':INPUT_SIZE, 'dilation':3}, 0.001, 50, 'unet_d5_dil3', 'data_b_len_1000'],
-        [UNet, {'depth':1, 'input_size':INPUT_SIZE, 'dilation':4}, 0.001, 50, 'unet_d1_dil4', 'data_b_len_1000'],
-        [UNet, {'depth':2, 'input_size':INPUT_SIZE, 'dilation':4}, 0.001, 50, 'unet_d2_dil4', 'data_b_len_1000'],
-        [UNet, {'depth':3, 'input_size':INPUT_SIZE, 'dilation':4}, 0.001, 50, 'unet_d3_dil4', 'data_b_len_1000'],
-        [UNet, {'depth':4, 'input_size':INPUT_SIZE, 'dilation':4}, 0.001, 50, 'unet_d4_dil4', 'data_b_len_1000'],
+    parameters = [
         [UNet, {'depth':5, 'input_size':INPUT_SIZE, 'dilation':4}, 0.001, 50, 'unet_d5_dil4', 'data_b_len_1000'],
-    ]'''
+    ]
 
     pre_training_parameters = [
-        ['unet_pre3', 25, 0.001, 'data_b_len_1000', lambda model: UNet_freeze(model, [2,3,4], freeze_bottleneck=True), 'unet_frozen_nobottle_1'],
-        ['unet_pre3', 25, 0.001, 'data_b_len_1000', lambda model: UNet_freeze(model, [1,3,4], freeze_bottleneck=True), 'unet_frozen_nobottle_2'],
-        ['unet_pre3', 25, 0.001, 'data_b_len_1000', lambda model: UNet_freeze(model, [1,2,4], freeze_bottleneck=True), 'unet_frozen_nobottle_3'],
-        ['unet_pre3', 25, 0.001, 'data_b_len_1000', lambda model: UNet_freeze(model, [1,2,3], freeze_bottleneck=True), 'unet_frozen_nobottle_4'],
-        ['unet_pre3', 25, 0.001, 'data_b_len_1000', lambda model: UNet_freeze(model, [2,3,4], freeze_bottleneck=False), 'unet_frozen_1'],
-        ['unet_pre3', 25, 0.001, 'data_b_len_1000', lambda model: UNet_freeze(model, [1,3,4], freeze_bottleneck=False), 'unet_frozen_2'],
-        ['unet_pre3', 25, 0.001, 'data_b_len_1000', lambda model: UNet_freeze(model, [1,2,4], freeze_bottleneck=False), 'unet_frozen_3'],
-        ['unet_pre3', 25, 0.001, 'data_b_len_1000', lambda model: UNet_freeze(model, [1,2,3], freeze_bottleneck=False), 'unet_frozen_4'],
-        ['unet_pre3', 25, 0.001, 'data_b_len_1000', lambda model: UNet_freeze(model, [], freeze_bottleneck=False), 'unet_frozen_all'],
-        ['unet_pre3', 25, 0.001, 'data_b_len_1000', lambda model: UNet_freeze(model, [1,2,3,4], freeze_bottleneck=False), 'unet_frozen_bottle'],
+        ['unet_pre1', 25, 0.001, 'data_b_len_1000', lambda model: UNet_freeze(model, [2,3,4], freeze_bottleneck=True), 'unet_frozen_nobottle_1'],
+        ['unet_pre1', 25, 0.001, 'data_b_len_1000', lambda model: UNet_freeze(model, [1,3,4], freeze_bottleneck=True), 'unet_frozen_nobottle_2'],
+        ['unet_pre1', 25, 0.001, 'data_b_len_1000', lambda model: UNet_freeze(model, [1,2,4], freeze_bottleneck=True), 'unet_frozen_nobottle_3'],
+        ['unet_pre1', 25, 0.001, 'data_b_len_1000', lambda model: UNet_freeze(model, [1,2,3], freeze_bottleneck=True), 'unet_frozen_nobottle_4'],
+        ['unet_pre1', 25, 0.001, 'data_b_len_1000', lambda model: UNet_freeze(model, [2,3,4], freeze_bottleneck=False), 'unet_frozen_1'],
+        ['unet_pre1', 25, 0.001, 'data_b_len_1000', lambda model: UNet_freeze(model, [1,3,4], freeze_bottleneck=False), 'unet_frozen_2'],
+        ['unet_pre1', 25, 0.001, 'data_b_len_1000', lambda model: UNet_freeze(model, [1,2,4], freeze_bottleneck=False), 'unet_frozen_3'],
+        ['unet_pre1', 25, 0.001, 'data_b_len_1000', lambda model: UNet_freeze(model, [1,2,3], freeze_bottleneck=False), 'unet_frozen_4'],
+        ['unet_pre1', 25, 0.001, 'data_b_len_1000', lambda model: UNet_freeze(model, [], freeze_bottleneck=False), 'unet_frozen_all'],
+        ['unet_pre1', 25, 0.001, 'data_b_len_1000', lambda model: UNet_freeze(model, [1,2,3,4], freeze_bottleneck=False), 'unet_frozen_bottle'],
     ]
-    
-    '''for p in parameters:
+
+    for p in parameters:
         cross_validation(*p)
-        '''
-    for p in pre_training_parameters:
-        cross_validation_with_pre_training(*p)
+
+    '''for p in pre_training_parameters:
+        cross_validation_with_pre_training(*p)'''
