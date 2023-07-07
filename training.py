@@ -201,7 +201,7 @@ training_params = [
     #[UNETR, {'depth':3, 'skip_connections':[2], 'pretrained_name': None, 'num_classes':NUM_CLASSES, 'in_chans': INPUT_SIZE[-1]}, 0.001, 100, 'unetr_tracker_d2', 'data_rgb_b_len_1000'],
     #[UNETR, {'depth':6, 'skip_connections':[2,5], 'pretrained_name': None, 'num_classes':NUM_CLASSES, 'in_chans': INPUT_SIZE[-1]}, 0.001, 100, 'unetr_tracker_d4', 'data_rgb_b_len_1000'],
     #[UNETR, {'depth':9, 'skip_connections':[2, 5, 8], 'pretrained_name': None, 'num_classes':NUM_CLASSES, 'in_chans': INPUT_SIZE[-1]}, 0.001, 100, 'unetr_tracker_d4', 'data_rgb_b_len_1000'],
-    #[UNETR, {'depth':12, 'skip_connections':[2,5,8,11], 'pretrained_name': None, 'num_classes':NUM_CLASSES, 'in_chans': INPUT_SIZE[-1]}, 0.001, 100, 'unetr_tracker_d12', 'data_rgb_b_len_1000'],
+    [UNETR, {'depth':12, 'skip_connections':[2,5,8,11], 'pretrained_name': None, 'num_classes':NUM_CLASSES, 'in_chans': INPUT_SIZE[-1]}, 0.001, 100, 'unetr_tracker_d12', 'data_rgb_b_len_1000'],
 
     #[UNETR, {'depth':1, 'skip_connections':[0], 'pretrained_name': None, 'num_classes':NUM_CLASSES}, 0.001, 20, 'unetr_depth1_np', 'data_rgb_b_noise_len_10k'],
     #[UNETR, {'depth':4, 'skip_connections':[0,1,2,3], 'pretrained_name': 'vit_base_patch16_224', 'num_classes':NUM_CLASSES}, 0.001, 20, 'unetr_depth4_np', 'data_rgb_b_noise_len_10k'],
@@ -214,7 +214,7 @@ Training parameters for comuting the receptive field TODO
 
 # For pre-trained models
 continue_training_params = [
-    ['unet_unetr_lr_loss', 80, 0.0001, 'data_rgb_b_noise_len_10k', lambda model: model, 'unet_unetr_lr_loss_e100'],
+    #['unet_unetr_lr_loss', 80, 0.0001, 'data_rgb_b_noise_len_10k', lambda model: model, 'unet_unetr_lr_loss_e100'],
     
     
 ]
