@@ -118,13 +118,13 @@ def train(model_class, kwargs, learning_rate, epochs, model_name, dataset_name):
     print(f'Training {model.__class__.__name__} with {kwargs} for {epochs} epochs on {dataset_name}')
     print("Number of parameters: ", sum(p.numel() for p in model.parameters() if p.requires_grad))
     
-    tracker = CarbonTracker(epochs=epochs, log_dir="logs/" + model_name)
+    #tracker = CarbonTracker(epochs=epochs, log_dir="logs/" + model_name)
     loss_manager = LossManager()
 
     # TRAINING
     for epoch in range(epochs):
         print(f'Epoch {epoch+1}/{epochs}')
-        tracker.epoch_start()
+        #tracker.epoch_start()
         for img, mask in tqdm(train_dataloader):
             
             img = img.to(device=DEVICE)
@@ -142,9 +142,9 @@ def train(model_class, kwargs, learning_rate, epochs, model_name, dataset_name):
 
             # gradient descent or adam step
             optimizer.step()
-        tracker.epoch_end()
+        #tracker.epoch_end()
         loss_manager.epoch_end()
-    tracker.stop()
+    #tracker.stop()
         
     # SAVING MODEL 
     # <!> Every arguments of the model initialization will be saved in kwargs dictionary<!>
