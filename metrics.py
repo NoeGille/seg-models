@@ -1,3 +1,5 @@
+'''Contains the MetricsManager class to manage metrics on multi class segmentation tasks
+and the LossManager class to manage loss during training'''
 import torch
 
 class MetricsManager():

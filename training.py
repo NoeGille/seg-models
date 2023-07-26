@@ -7,7 +7,6 @@ import torch.nn as nn
 from PIL import Image
 import numpy as np
 import torch
-import wandb
 from carbontracker.tracker import CarbonTracker
 from metrics import LossManager
 import segmentation_models_pytorch as smp
@@ -28,7 +27,7 @@ INPUT_SIZE = (224, 224, 3)
 
 def continue_training(model_name, epochs, learning_rate, dataset_name, freezing_function:callable = lambda x: None, new_model_name = None, validation_loss=True):
     '''load and train a pretrained model on a specified dataset
-    A freezing functions can be specified to freeze some parameters of the models
+    freezing_function : function that takes the model as input and freeze some parameters (The frozen parameters are not updated during training)
     new_model_name : if specified, the model will be saved with this name'''
     print(f'Loading model {model_name}')
 
@@ -170,7 +169,6 @@ def train(model_class, kwargs, learning_rate, epochs, model_name, dataset_name, 
         
     # SAVING MODEL 
     # <!> Every arguments of the model initialization will be saved in kwargs dictionary<!>
-    # https://pytorch.org/tutorials/beginner/saving_loading_models.html
     torch.save(
     {   
         'input_size':INPUT_SIZE,
@@ -232,36 +230,48 @@ def freeze_smp(model : smp.Unet, n):
 # LIST OF PARAMETERS
 
 '''list of every model, model parameters and training parameters to train
-This allows us to train multiple models in the same script
-training_params = [[model class, kwargs, learning rate, epochs, model name, dataset name], [...], [...'''
 
-
-
+training_params = [[model class, kwargs, learning rate, epochs, model name, dataset name], [...], [...
+Example:
 training_params = [
-    #[UNETR, {'depth':12, 'skip_connections':[2,5,8,11], 'pretrained_name': 'vit_base_patch16_224', 'num_classes':NUM_CLASSES}, 0.0001, 20, 'unetr_depth12_camus', 'data_camus1'],
-    #[UNETR, {'depth':9, 'skip_connections':[2,5,8], 'pretrained_name': 'vit_base_patch16_224', 'num_classes':NUM_CLASSES}, 0.0001, 20, 'unetr_depth9_camus', 'data_camus1'],
-    [UNETR, {'depth':2, 'skip_connections':[0,1], 'pretrained_name': 'vit_base_patch16_224', 'num_classes':NUM_CLASSES}, 0.0001, 20, 'unetr_depth2_sc01_pre_lr', 'data_rgb_b_noise_len_10k'],
-    #[UNETR, {'depth':3, 'skip_connections':[0,1,2], 'pretrained_name': 'vit_base_patch16_224', 'num_classes':NUM_CLASSES}, 0.0001, 20, 'unetr_depth3_camus_sc012', 'data_camus1'],
-    
-    
-    #[UNETR, {'depth':2, 'skip_connections':[1], 'pretrained_name': 'vit_base_patch16_224', 'num_classes':NUM_CLASSES}, 0.0001, 20, 'unetr_depth2_camus', 'data_camus1'],
-    #[UNETR, {'depth':3, 'skip_connections':[2], 'pretrained_name': 'vit_base_patch16_224', 'num_classes':NUM_CLASSES}, 0.0001, 20, 'unetr_depth3_camus', 'data_camus1'],
-    #[UNETR, {'depth':6, 'skip_connections':[2, 5], 'pretrained_name': 'vit_base_patch16_224', 'num_classes':NUM_CLASSES}, 0.0001, 20, 'unetr_depth6_camus', 'data_camus1'],
-
-    #[UNETR, {'depth':1, 'skip_connections':[0], 'pretrained_name': None, 'num_classes':NUM_CLASSES}, 0.001, 20, 'unetr_depth1_np', 'data_rgb_b_noise_len_10k'],
-    #[UNETR, {'depth':4, 'skip_connections':[0,1,2,3], 'pretrained_name': 'vit_base_patch16_224', 'num_classes':NUM_CLASSES}, 0.001, 20, 'unetr_depth4_np', 'data_rgb_b_noise_len_10k'],
-]
-
-''''''
-
-'''
-Training parameters for comuting the receptive field TODO
-[smp.Unet, {'encoder_name':'vgg16',
+    [UNETR, {'depth':12, 'skip_connections':[2,5,8,11], 'pretrained_name': 'vit_base_patch16_224', 'num_classes':NUM_CLASSES}, 0.0001, 20, 'unetr_depth12_camus', 'data_camus1'],
+    [UNet, {'depth':5, 'num_classes':NUM_CLASSES, 'input_size': INPUT_SIZE}, 0.0001, 20, 'unet_depth5_camus', 'data_camus1'],
+    [smp.Unet, {'encoder_name':'vgg16',
                     'encoder_weights':'imagenet',
                     'in_channels':3,
                     'encoder_depth':5,
                     'decoder_channels':(256, 128, 64, 32, 16),
-                    'classes':10}, 0.0001, 20, 'unet_depth5_10k', 'data_rgb_b_noise_len_10k'],
+                    'classes':10}, 0.0001, 20, 'unet_depth5', 'dataset_rgb'],
+]'''
+
+training_params = [
+    [UNETR, {'depth':2, 'skip_connections':[0,1], 'pretrained_name': 'vit_base_patch16_224', 'num_classes':NUM_CLASSES}, 0.0001, 20, 'unetr_depth2_sc01_pre_lr', 'data_rgb_b_noise_len_10k'],
+   ]
+
+# For pre-trained models
+# continue_training_params = [[model name, epochs, learning rate, dataset name, freezing function, new model name], [...], [...]
+# Example:
+# continue_training_params = [
+#     ['unet_pre4', 25, 0.0001, 'data_hard_b_len1000', lambda model: UNet_freeze(model, [2,3,4], freeze_bottleneck=True), 'unet_pre4_e25_size1000'],
+# Freezing functions can be defined in this file and allows you to freeze some parameters in the model during training
+# For example, the function UNet_freeze allows you to freeze the encoder, decoder and skip connections of the UNet model   
+
+continue_training_params = [
+    ['unet_vgg_depth5_pre_e5', 50, 0.0001, 'data_hard_b_len1000', lambda model: freeze_smp(model, 5), 'unet_vgg_depth5_pre_e55_len1000_b'],
+]
+
+
+for i, params in enumerate(training_params):
+    print(f'Training model {i+1}/{len(training_params)}')
+    train(*params)
+
+for i, params in enumerate(continue_training_params):
+    print(f'Training model {i+1}/{len(continue_training_params)}')
+    continue_training(*params)
+
+'''
+Training parameters for comuting the receptive field TODO
+
     [smp.Unet, {'encoder_name':'vgg16',
                     'encoder_weights':'imagenet',
                     'in_channels':3,
@@ -282,17 +292,6 @@ Training parameters for comuting the receptive field TODO
                     'classes':10}, 0.0001, 20, 'unet_depth2_10k', 'data_rgb_b_noise_len_10k'],
 '''
 
-
-# For pre-trained models
-continue_training_params = [
-    ['unet_vgg_depth5_pre_e5', 50, 0.0001, 'data_hard_b_len1000', lambda model: freeze_smp(model, 5), 'unet_vgg_depth5_pre_e55_len1000_b'],
-    ['unet_vgg_depth5_pre_e5', 50, 0.0001, 'data_hard_b_len1000', lambda model: freeze_smp(model, 4), 'unet_vgg_depth5_pre_e55_len1000_b4'],
-    ['unet_vgg_depth5_pre_e5', 50, 0.0001, 'data_hard_b_len1000', lambda model: freeze_smp(model, 3), 'unet_vgg_depth5_pre_e55_len1000_b43'],
-    ['unet_vgg_depth5_pre_e5', 50, 0.0001, 'data_hard_b_len1000', lambda model: freeze_smp(model, 2), 'unet_vgg_depth5_pre_e55_len1000_b432'],
-    ['unet_vgg_depth5_pre_e5', 50, 0.0001, 'data_hard_b_len1000', lambda model: model, 'unet_vgg_depth5_pre_e55_len1000_b4321'],
-    
-]
-
 '''['unet_pre4', 25, 0.001, 'data_hard_b_len1000', lambda model: UNet_freeze(model, [2,3,4], freeze_bottleneck=True), 'unet_frozen_nobottle_1'],
     ['unet_pre4', 25, 0.001, 'data_hard_b_len1000', lambda model: UNet_freeze(model, [1,3,4], freeze_bottleneck=True), 'unet_frozen_nobottle_2'],
     ['unet_pre4', 25, 0.001, 'data_hard_b_len1000', lambda model: UNet_freeze(model, [1,2,4], freeze_bottleneck=True), 'unet_frozen_nobottle_3'],
@@ -303,11 +302,3 @@ continue_training_params = [
     ['unet_pre4', 25, 0.001, 'data_hard_b_len1000', lambda model: UNet_freeze(model, [1,2,3], freeze_bottleneck=False), 'unet_frozen_4'],
     ['unet_pre4', 25, 0.001, 'data_hard_b_len1000', lambda model: UNet_freeze(model, [], freeze_bottleneck=False), 'unet_frozen_all'],
     ['unet_pre4', 25, 0.001, 'data_hard_b_len1000', lambda model: UNet_freeze(model, [1,2,3,4], freeze_bottleneck=False), 'unet_frozen_bottle'],'''
-
-for i, params in enumerate(training_params):
-    print(f'Training model {i+1}/{len(training_params)}')
-    train(*params)
-
-'''for i, params in enumerate(continue_training_params):
-    print(f'Training model {i+1}/{len(continue_training_params)}')
-    continue_training(*params)'''

@@ -1,3 +1,5 @@
+'''Useful functions to compute the receptive field of a convolutional neural network'''
+
 def conv(n, dilation=1):
     '''Compute the receptive field of the output of a convolutional layer of kernel size 3x3, dilation=dilation stride=1 and padding=dilation'''
     return 2 * dilation + n

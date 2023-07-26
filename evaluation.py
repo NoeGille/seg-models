@@ -1,3 +1,5 @@
+'''Evaluate a model on a dataset and save the metrics in a file.'''
+
 from dataset_florian import FashionMNISTDataset, FashionMNISTDatasetRGB
 from CamusEDImageDataset1 import CamusEDImageDataset
 from torch.utils.data import DataLoader
@@ -9,13 +11,10 @@ import torch.nn as nn
 from PIL import Image
 import numpy as np
 import torch
-from receptivefield.pytorch import PytorchReceptiveField
-from receptivefield.image import get_default_image
 import segmentation_models_pytorch as smp
 
 
 # CONSTANTS
-
 MODEL_PATH = 'models/'
 DATASET_PATH = 'datasets/'
 RESULT_PATH = 'results/'
@@ -27,7 +26,7 @@ SAVE_PREDICTION = True
 '''Activate evaluation or not'''
 METRICS = True
 
-'''Activate receptive field computation or not'''
+'''Activate receptive field computation or not <!> Only works for UNet class from models.py <!>'''
 RECEPTIVE_FIELD = False
 
 def evaluate(model, dataset, num_classes=10, batch_size=16, device=DEVICE):
@@ -52,6 +51,7 @@ def evaluate(model, dataset, num_classes=10, batch_size=16, device=DEVICE):
     return (accuracy, precision, recall, dice_score), (accuracy_var, precision_var, recall_var, dice_score_var)
 
 def plot_prediction(model, dataset, fig):
+    '''Plot a sample image, its ground truth and the prediction of the model'''
     sample_image, sample_mask = dataset[0]
     sample_image_to_show = sample_image.permute(1, 2, 0)[:,:,0]
     fig.add_subplot(1, 3, 1)
@@ -70,22 +70,6 @@ def plot_prediction(model, dataset, fig):
         plt.imshow(prediction.argmax(1).cpu().numpy()[0], vmin=0, vmax=10, cmap='tab10')
         plt.axis('off')
 
-def plot_prediction2(model, dataset):
-    sample_image, sample_mask = dataset[0]
-    with torch.no_grad():
-        prediction = model(torch.from_numpy(np.array([sample_image.numpy()])).to(device=DEVICE))
-        plt.imshow(prediction.argmax(1).cpu().numpy()[0], vmin=0, vmax=10, cmap='tab10')
-        plt.axis('off')
-
-def plot_metrics(model, dataset, metrics):
-    accuracy, precision, recall, dice_score = metrics
-    plt.ylim(0, 100)
-    plt.ylabel('%')
-    plt.xlabel('metrics')
-    plt.bar(['precision', 'recall', 'dice_score'], [precision * 100, recall * 100, dice_score * 100], color = ['blue', 'orange', 'green'])
-    plt.text(0, precision * 100, str(round(float(precision * 100), ndigits=2)))
-    plt.text(1, recall * 100,str(round(float(recall * 100), ndigits=2)))
-    plt.text(2, dice_score * 100, str(round(float(dice_score * 100), ndigits=2)))
 
 def plot_receptive_field(model, dataset, fig):
     '''Plot the receptive field of the model on a sample image'''
@@ -136,6 +120,8 @@ def save_metrics(metrics_mean, metrics_var, model_name, receptive_field=None):
 
 
 if __name__ == "__main__":
+    # List of the models to evaluate by filename (without extension) 
+    # The dataset used for training is automatically loaded as it is saved in the model file
     model_names = [
         'unetr_depth4_np',
         'unetr_depth4_sc0123'
@@ -144,7 +130,7 @@ if __name__ == "__main__":
     
     
     
-    # EVALUATION
+    # EVALUATION LOOP
     rf_fig, fig_ax = plt.subplots(figsize=(25, 20), nrows=4, ncols=5)
     fig_ax = fig_ax.flatten()
     for i, model_name in enumerate(model_names):
@@ -178,15 +164,9 @@ if __name__ == "__main__":
                 save_metrics(mean_metrics, var_metrics, model_name)
                 
         if SAVE_PREDICTION:
-            plt.figure()
-            plot_prediction2(model=model, dataset=dataset)
-            plt.savefig(RESULT_PATH + f'{model_name}_pred.png', bbox_inches='tight')
-            plt.figure()
-            plot_metrics(model=model, dataset=dataset, metrics=mean_metrics)
-            plt.savefig(RESULT_PATH + f'{model_name}_metrics.png', bbox_inches='tight')
             figure = plt.figure(figsize=(10, 5))
             plot_prediction(model=model, dataset=dataset, fig=figure)
-            plt.savefig(RESULT_PATH + f'{model_name}_pred2.png', bbox_inches='tight')
+            plt.savefig(RESULT_PATH + f'{model_name}_pred.png', bbox_inches='tight')
             if RECEPTIVE_FIELD:
                 plot_receptive_field(model=model, dataset=dataset, fig=fig_ax[i])
     

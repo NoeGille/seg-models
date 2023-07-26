@@ -1,3 +1,4 @@
+'''Various functions to plot and visualise attention maps and attention rollout maps from UNETR'''
 from dataset_florian import FashionMNISTDataset, FashionMNISTDatasetRGB
 from torch.utils.data import DataLoader, Subset
 import matplotlib.pyplot as plt

@@ -1,3 +1,6 @@
+'''This code is very close to train.py'. 
+Given a model name and a dataset name, train it and evaluate it with cross validation'''
+
 from evaluation import evaluate
 from torch.utils.data import random_split, ConcatDataset, DataLoader
 import torch
@@ -10,8 +13,7 @@ from dataset_florian import FashionMNISTDataset, FashionMNISTDatasetRGB
 from CamusEDImageDataset1 import CamusEDImageDataset
 import segmentation_models_pytorch as smp
 
-'''Given a model and a dataset, train the model on the dataset and evaluate it
-using cross validation'''
+
 
 DATASET_PATH = 'datasets/'
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

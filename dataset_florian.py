@@ -1,3 +1,5 @@
+'''Create a new dataset from the FashionMNIST dataset. 
+of Mateus Riva, Pietro Gori, Florian Yger, and Isabelle Bloch. Is the u-net directional-relationship aware ?, 2022'''
 import albumentations as A
 import torch
 from torchvision import transforms
@@ -6,17 +8,25 @@ from torchvision import datasets
 from torchvision import transforms
 import numpy as np
 import random
-from functools import lru_cache
 
 train_dataset = datasets.FashionMNIST(root='./data', train = True, download=True)
 valid_dataset = datasets.FashionMNIST(root='./data', train = False, download=True)
 
 class FashionMNISTDataset(Dataset):
+
     def __init__(self, dataset, transform = None, 
                  shape = 224, labels = [1, 2, 3], 
                  not_labels = [5, 6, 7], background_obj = 3, 
                  include_label = True, length = 10000,
                  triangle_mode = False, seed = -1, noise = False):
+        '''labels : list of labels to include in the foreground objects
+        not_labels : list of labels to include in the background objects
+        background_obj : number of background objects
+        include_label : if True, the label of the foreground objects is included in the mask else the label is 1
+        length : number of samples in the dataset
+        triangle_mode : if True, the foreground objects are triangles else in square shape
+        seed : seed to generate random dataset
+        noise : if True, add noise to the background and position of the foreground objects'''
         self.dataset = dataset
         self.transform = transform
         self.shape = shape
@@ -26,7 +36,6 @@ class FashionMNISTDataset(Dataset):
         self.include_label = include_label
         self.len = length
         self.triangle_mode = triangle_mode
-        # Use to generate random dataset object
         self.random_key = random.random() if seed < 0 else seed
         self.noise = noise
         
@@ -179,10 +188,10 @@ if __name__ == "__main__":
     train_data, valid_data = random_split(data, [0.7, 0.3])
 
     # SAVING DATASETS
-    #torch.save(data, DATASET_PATH + DATASET_NAME + ".pt")
+    torch.save(data, DATASET_PATH + DATASET_NAME + ".pt")
     
-    #torch.save(train_data, DATASET_PATH + "train_" + DATASET_NAME + ".pt")
-    #torch.save(valid_data, DATASET_PATH + "valid_" + DATASET_NAME + ".pt")
+    torch.save(train_data, DATASET_PATH + "train_" + DATASET_NAME + ".pt")
+    torch.save(valid_data, DATASET_PATH + "valid_" + DATASET_NAME + ".pt")
     
     # PLOTTING SAMPLES
     if False:

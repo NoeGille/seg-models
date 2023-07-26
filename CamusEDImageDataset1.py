@@ -1,4 +1,4 @@
-
+'''Load and transforms the Camus dataset in a PyTorch Dataset'''
 from torchvision.transforms import ToTensor,Compose,Resize,ToPILImage,PILToTensor, RandomRotation
 from torch.utils.data import Dataset
 import nibabel as nib
@@ -74,5 +74,5 @@ if __name__ == '__main__':
     )
 
     torch.save(dataset, "../seg-models/datasets/data_camus1.pt")
-    #torch.save(train_dataset, "../seg-models/datasets/train_data_camus1.pt")
-    #torch.save(valid_dataset, "../seg-models/datasets/valid_data_camus1.pt")
+    torch.save(train_dataset, "../seg-models/datasets/train_data_camus1.pt")
+    torch.save(valid_dataset, "../seg-models/datasets/valid_data_camus1.pt")

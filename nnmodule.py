@@ -1,8 +1,10 @@
+'''Modules used by the models'''
 import torchvision.transforms as transforms
 import torch.nn as nn
 import numpy as np
 import torch
 import timm
+
 # UNETR
 
 class PatchEmbed(nn.Module):

@@ -1,5 +1,5 @@
-'''Evaluate two models on each sample of the validation set. 
-Then, compute the mean dice score and variance for each model'''
+'''Perform a mann-whitney-wilcoxon test on the dice score of the models on their associated dataset.
+Plot a table of all the p-values between each models.'''
 from dataset_florian import FashionMNISTDatasetRGB
 from CamusEDImageDataset1 import CamusEDImageDataset
 from torch.utils.data import DataLoader
