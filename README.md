@@ -14,6 +14,8 @@ This project is made to study and experiment with U-Net and UNETR.
 
 All models and datasets can be saved in .pt format files. Check the code implementation of training.py, crossvalidation.py and dataset_florian.py for further information.
 
+If you want to use Camus dataset, you must download it from https://www.creatis.insa-lyon.fr/Challenge/camus/
+It is recommended to create folder to save models and datasets in.
 
 
 
