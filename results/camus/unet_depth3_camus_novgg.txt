@@ -1,0 +1,9 @@
+Kwargs : {'depth': 3, 'input_size': (224, 224, 3)}
+Dataset : data_camus1
+Number of epochs : 20
+Precision : 0.86974317
+Recall : 0.84011805
+Dice score : 0.85465032
+Precision variance : 0.00009560
+Recall variance : 0.00005453
+Dice score variance : 0.00005410

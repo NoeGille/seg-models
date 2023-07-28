@@ -1,0 +1,9 @@
+Kwargs : {'encoder_name': 'vgg16', 'encoder_weights': 'imagenet', 'in_channels': 3, 'classes': 10}
+Dataset : data_rgb_b_noise_len_10k
+Number of epochs : 20
+Precision : 0.91674215
+Recall : 0.92945123
+Dice score : 0.92305291
+Precision variance : 0.00134651
+Recall variance : 0.00075219
+Dice score variance : 0.00083236

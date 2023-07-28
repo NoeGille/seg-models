@@ -1,0 +1,9 @@
+Kwargs : {'depth': 2, 'skip_connections': [1], 'pretrained_name': None, 'num_classes': 10}
+Dataset : data_rgb_b_noise_len_10k
+Number of epochs : 20
+Precision : 0.83182168
+Recall : 0.84574181
+Dice score : 0.83872402
+Precision variance : 0.00174388
+Recall variance : 0.00207912
+Dice score variance : 0.00161048

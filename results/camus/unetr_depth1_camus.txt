@@ -1,0 +1,9 @@
+Kwargs : {'depth': 1, 'skip_connections': [0], 'pretrained_name': 'vit_base_patch16_224', 'num_classes': 10}
+Dataset : data_camus1
+Number of epochs : 20
+Precision : 0.74163717
+Recall : 0.73001075
+Dice score : 0.73577797
+Precision variance : 0.00060244
+Recall variance : 0.00087157
+Dice score variance : 0.00059303

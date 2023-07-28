@@ -1,0 +1,9 @@
+Kwargs : {'depth': 4, 'input_size': (224, 224, 1), 'dilation': 2}
+Dataset : data_hard_len1000
+Number of epochs : 50
+Precision : 0.92033297
+Recall : 0.87377846
+Dice score : 0.89645171
+Precision variance : 0.00124109
+Recall variance : 0.00187398
+Dice score variance : 0.00128879

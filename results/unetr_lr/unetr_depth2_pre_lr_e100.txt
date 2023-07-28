@@ -1,0 +1,9 @@
+Kwargs : {'depth': 2, 'skip_connections': [1], 'pretrained_name': 'vit_base_patch16_224', 'num_classes': 10}
+Dataset : data_rgb_b_noise_len_10k
+Number of epochs : 80
+Precision : 0.86998868
+Recall : 0.90316951
+Dice score : 0.88626862
+Precision variance : 0.00174183
+Recall variance : 0.00148735
+Dice score variance : 0.00133600

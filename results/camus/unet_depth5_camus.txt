@@ -1,0 +1,9 @@
+Kwargs : {'encoder_name': 'vgg16', 'encoder_weights': 'imagenet', 'in_channels': 3, 'encoder_depth': 5, 'decoder_channels': (256, 128, 64, 32, 16), 'classes': 10}
+Dataset : data_camus1
+Number of epochs : 20
+Precision : 0.88393337
+Recall : 0.88315058
+Dice score : 0.88350391
+Precision variance : 0.00007031
+Recall variance : 0.00003762
+Dice score variance : 0.00002046
